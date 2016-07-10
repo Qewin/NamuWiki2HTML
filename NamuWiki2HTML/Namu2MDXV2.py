@@ -722,7 +722,7 @@ while True:
 print("Reading Cache")
 for i in range(0,25):  #50):
     FileCache.append(infile.readline())
-line = "".join(FileCache)
+line = "".join(FileCache).decode('unicode-escape')
 #outfile.writelines(FileCache)
 #raise sdfS
 print("Converting...")
@@ -731,22 +731,17 @@ while True:
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
         titlecache = list()
         isTemplate = False  # 필요없는 템플레이트 문서 스킵
-        while line[read:read+2] != ",\'": #read 는 개수보다 1개 작음
+        while line[read:read+13] != "\"namespace\":\"": #read 는 개수보다 1개 작음
             read += 1
-        if line[read-1] == "1":
+        if line[read+13] == "1":
             titlecache.append("틀:")
-        elif line[read-1] == "2" or line[read-1] == "3": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
+        elif line[read+13] == "2" or line[read-1] == "3": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
             titlecache.append("분류:")
-        elif line[read-1] == "6":
+        elif line[read+13] == "6":
             titlecache.append("나무위키:")
-        read += 2 # 두 문자를 동시에.
-        if line[read] == " ":
-            read += 1 #제목 앞에 빈 공간은 곤란합니다.
-        while line[read:read+2] != "\',":  #제목
-            if line[read] == '\\': read += 1
-            titlecache.append(line[read])
+        while line[read:read+9] != "\"title\":\"":  #제목 "title":"
             read += 1
-        read += 3
+        read += 9
             #,'(내용)
             #* ^
             #read ==> ,
@@ -767,9 +762,8 @@ while True:
         
         if isTemplate :
             while True:
-                if line[read] == '\'' and line[read+1] == ')' and line[read-1] != '\\':
+                if line[read:read+14] == "\"contributors\"": #"contributors"
                     break
-                read += 1 # istemplate이라 문서 스킵
         elif line[read:read+9] == "#redirect": #리다이렉트
             linecache[0].append("<a href=\"entry://")
             read += 10 # 공백 땜에 9 + 1
@@ -826,7 +820,7 @@ while True:
                 if FileCache[40] == "":
                     infile.close()
                     full = -1
-                line = "".join(FileCache)
+                line = "".join(FileCache).decode('unicode-escape')
             elif line.count(';') == 0: raise out # 리스트도 비고 세미콜론 없으면 끝.
     except:
         break
