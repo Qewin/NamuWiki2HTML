@@ -16,6 +16,8 @@ main()
 	
 	DocPointerList[10000]
 	CDocPointerList[10000]
+	
+	//LOOP 
 	While ( pointer = find(각 문서의 시작) ) is not NULL 
 		DocPointerList[a] = pointer
 		a++
@@ -23,14 +25,20 @@ main()
 	DocPointerList[a~a+CORE-1] = NULL
 	
 	isFinished[0~CORE-2] = 1
-	Parser(1~CORE-1,DocPointerList,CDocPointerList,Flag) // flag 는 isFinished의 포인터 
+	Parser(1~CORE-1,CORE-1,DocPointerList,CDocPointerList,Flag) // flag 는 isFinished의 포인터 
 	while (isFinished[0~CORE-2] == 0 and CacheManage("ReturnChunk") != NULL and isFinished[0~CORE-2] != 0) ;
 	while (isFinished[0~CORE-2] != 0)
 		delay() //함수 찾아보기. 찾아보면 있다. 
-	
-	
 	DocPointerList[START~] = DocPointerList[CutDOC~END]
-	read Namuwiki.json -> Cache
+	cache2 = CacheManage("ReturnChunk")
+	if (cache2 == NULL)
+		(끝내기 프로세스) 
+		break 
+	(이어붙이기)
+	Parser(0,1,DocPointerList,CDocPointerList,Flag)
+	cache = cache2
+	(디스크에 쓰기)
+	//LOOP
 	
 	
 
@@ -41,8 +49,8 @@ find("String")
 		if Cache[a] is "String" : Return a
 		else if Cache[a] is EOF : Return NULL
 
-Parser(Number,DocPointerList,CDocPointerList,Flag)
-	while(DocPointerList[Number+(CORE-1)*a] is not NULL)
+Parser(Number,Multiplyer,DocPointerList,CDocPointerList,Flag)
+	while(DocPointerList[Number+Multiplyer*a] is not NULL)
 		(Parse)
 
 CacheManage(mode)
@@ -65,6 +73,7 @@ CacheManage(mode)
 
 		CacheList[CEnd] = allocate Cache 50MB
 		read Namuwiki.json -> Cache 50MB
+		if ((Read Ends)) return NULL
 		return CacheList[CEnd]
 
 	case mode = "ReturnChunk"
