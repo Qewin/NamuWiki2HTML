@@ -1,25 +1,32 @@
 #define CORE 4
 
 
-*CacheList[개당50MB인것 감안]
+*CacheList[10] //10 * 50 = 500(MB)
 CSta
 CEnd
+isFinished[CORE-1]
 
 
 main()
 	open Namuwiki.json
 	open Output.json
 	
+	CacheManage("INIT")
+	cache = CacheManage("ReturnChunk")
 	
 	DocPointerList[10000]
 	CDocPointerList[10000]
-	While ( pointer = find(\"title\":\") ) is not NULL 
+	While ( pointer = find(각 문서의 시작) ) is not NULL 
 		DocPointerList[a] = pointer
-	CutDOC = DocPointerList[a]
-	DocPointerList[a~a+CORE] = NULL
+		a++
+	CutDOC = DocPointerList[a] //cutdoc은 잘려버린 불쌍한 문서. 
+	DocPointerList[a~a+CORE-1] = NULL
 	
-	Parser(1~CORE-1,DocPointerList,CDocPointerList)
-	CacheList
+	isFinished[0~CORE-2] = 1
+	Parser(1~CORE-1,DocPointerList,CDocPointerList,Flag) // flag 는 isFinished의 포인터 
+	while (isFinished[0~CORE-2] == 0 and CacheManage("ReturnChunk") != NULL and isFinished[0~CORE-2] != 0) ;
+	while (isFinished[0~CORE-2] != 0)
+		delay() //함수 찾아보기. 찾아보면 있다. 
 	
 	
 	DocPointerList[START~] = DocPointerList[CutDOC~END]
@@ -34,7 +41,7 @@ find("String")
 		if Cache[a] is "String" : Return a
 		else if Cache[a] is EOF : Return NULL
 
-Parser(Number,DocPointerList,CDocPointerList)
+Parser(Number,DocPointerList,CDocPointerList,Flag)
 	while(DocPointerList[Number+(CORE-1)*a] is not NULL)
 		(Parse)
 
@@ -46,14 +53,15 @@ CacheManage(mode)
 		read Namuwiki.json -> Cache 50MB
 		CacheList[CEnd] = allocate Cache 50MB
 		read Namuwiki.json -> Cache 50MB
-
+		return NULL 
 
 	case mode = "Read"
+		CEndC = CEnd
 		if (CEnd > listSize) CEnd = 0 
 		else CEnd++
 		if (CEnd is CSta)
-			CEnd--
-			return NULL
+			CEnd = CEndC
+			return NULL // if full
 
 		CacheList[CEnd] = allocate Cache 50MB
 		read Namuwiki.json -> Cache 50MB
@@ -64,6 +72,5 @@ CacheManage(mode)
 		if (CSta > listSize) CSta = 0 
 		else CSta++
 		if (CSta is CEnd)
-			CacheManage
-			return NULL
+			CacheManage("Read")
 		return CacheList[CST]
