@@ -1,0 +1,69 @@
+#define CORE 4
+
+
+*CacheList[개당50MB인것 감안]
+CSta
+CEnd
+
+
+main()
+	open Namuwiki.json
+	open Output.json
+	
+	
+	DocPointerList[10000]
+	CDocPointerList[10000]
+	While ( pointer = find(\"title\":\") ) is not NULL 
+		DocPointerList[a] = pointer
+	CutDOC = DocPointerList[a]
+	DocPointerList[a~a+CORE] = NULL
+	
+	Parser(1~CORE-1,DocPointerList,CDocPointerList)
+	CacheList
+	
+	
+	DocPointerList[START~] = DocPointerList[CutDOC~END]
+	read Namuwiki.json -> Cache
+	
+	
+
+
+
+find("String")
+	for Cache[a] Start to End
+		if Cache[a] is "String" : Return a
+		else if Cache[a] is EOF : Return NULL
+
+Parser(Number,DocPointerList,CDocPointerList)
+	while(DocPointerList[Number+(CORE-1)*a] is not NULL)
+		(Parse)
+
+CacheManage(mode)
+	case mode = "INIT"
+		CEnd = 1
+		CSta = 0
+		CacheList[CSta] = allocate Cache 50MB
+		read Namuwiki.json -> Cache 50MB
+		CacheList[CEnd] = allocate Cache 50MB
+		read Namuwiki.json -> Cache 50MB
+
+
+	case mode = "Read"
+		if (CEnd > listSize) CEnd = 0 
+		else CEnd++
+		if (CEnd is CSta)
+			CEnd--
+			return NULL
+
+		CacheList[CEnd] = allocate Cache 50MB
+		read Namuwiki.json -> Cache 50MB
+		return CacheList[CEnd]
+
+	case mode = "ReturnChunk"
+		CST = CSta
+		if (CSta > listSize) CSta = 0 
+		else CSta++
+		if (CSta is CEnd)
+			CacheManage
+			return NULL
+		return CacheList[CST]
