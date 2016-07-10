@@ -18,7 +18,7 @@
 import codecs
 import time
 #import pdb
-infile = codecs.open("C:/namu/namu.sql", 'r', 'utf-8') #SQL 경로
+infile = codecs.open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r', 'utf-8') #JSON 경로
 outfile = codecs.open("namu.txt", 'w', 'utf-8') #출력 파일 경로
 errfile = codecs.open("err.txt", 'w', 'utf-8') #에러 파일 경로
 count = -1 #라인 수(-1인 이유는 \r\n때문. 아래서 0으로 수정됨) 
@@ -60,7 +60,7 @@ def TripleBrace(dir,read):
             read += 3
         else:
             while line [read:read+3] != "}}}":
-                if line[read] == "\'":
+                if line[read] == "\"":
                     return read #문서의 끝으로 추정
                 elif line[read] == "\\":
                     read += 1 # sql 문법 스킵
@@ -110,7 +110,7 @@ def TripleBrace(dir,read):
                     linecache[dir].append("&quot;")
                     read += 1
                 else:
-                    if line[read] == "\'":
+                    if line[read] == "\"":
                         return read #문서의 끝으로 추정
                     elif line[read] == "\\":
                         read += 1 # sql 문법 스킵
@@ -183,7 +183,7 @@ def newTableFunc(dir,read):
             read += 2                                                   #read를 건드리지 않기 위한 변수
         isVacant = True
         re = read
-        while line[re:re+2] != "\\n" and line[re:re+2] !="\')":
+        while line[re:re+2] != "\\n" and line[re:re+2] !="\",":
             if line[re] != ' ' and line[re] !='	':
                 #print("%s,%s"%(line[read:read+2],line[re-2:re+2]))
                 isVacant = False
@@ -191,7 +191,7 @@ def newTableFunc(dir,read):
             re += 1
         if isVacant:
             if l > 1: linecache[4].append("<td colspan=\"%d\"></td>"%(l-1))
-            if line[re:re+2] =="\')":
+            if line[re:re+2] =="\",":
                 read = re
                 linecache[4].append("</tr></table>")
                 break
@@ -277,7 +277,7 @@ def newTableFunc(dir,read):
             bwk = len(linecache[4])#append 하기 전에 넣어서 - 1 할 필요 없
             linecache[4].append(">")#123
             read = WikiParser(4,read,"||")
-            if line[read] == "\'":#wikiparse->')체크
+            if line[read] == "\"":#wikiparse->')체크
                 linecache[4][bwk] = "></td></tr></table>" #위의 123 부분에 덮어씌움
                 break
             else: linecache[4].append("</td>")
@@ -630,7 +630,7 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                 linecache[dir].append("\"")
             elif line[read:read+4] == "\\n##": #주석 (\n##)
                 read += 2
-                while line[read:read+2] != "\\n" and line[read:read+2] != "\')":
+                while line[read:read+2] != "\\n" and line[read:read+2] != "\",":
                     read += 1
                 #\n까지 옴
                 read -= 2
@@ -685,7 +685,7 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
             linecache[dir].append("&quot;")
             read += 1
         #-----------------------------------------------------------
-        elif line[read] == '\'' and line[read+1] == ')': #and line[read-1] != '\\':
+        elif line[read] == '\"' and line[read+1] == ',': #and line[read-1] != '\\':
             break                #양식 밖의 ')
         elif end != "" and line[read:read+len(end)] == end: #커스텀 탈출 문자열 (""이면 말고)
             if not strong:
@@ -713,12 +713,6 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
 #
 #
 #--------------------------------------------------
-
-while True:
-    line = infile.readline()
-    if line[0] == 'I':
-        FileCache.append(line)
-        break
 print("Reading Cache")
 for i in range(0,25):  #50):
     FileCache.append(infile.readline())
@@ -727,7 +721,7 @@ line = "".join(FileCache).decode('unicode-escape')
 #raise sdfS
 print("Converting...")
 while True:
-    while line[read] != ';': # ');
+    for i in range(0,100):
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
         titlecache = list()
         isTemplate = False  # 필요없는 템플레이트 문서 스킵
@@ -739,12 +733,17 @@ while True:
             titlecache.append("분류:")
         elif line[read+13] == "6":
             titlecache.append("나무위키:")
-        while line[read:read+9] != "\"title\":\"":  #제목 "title":"
+        while line[read:read+9] != "\"title\":\"" :  #제목 "title":"
             read += 1
         read += 9
-            #,'(내용)
-            #* ^
-            #read ==> ,
+        while line[read:read+3] != "\",\"" : ## title 끝으로
+            titlecache.append(line[read])
+            read += 1
+        while line[read:read+8] != "\"text\":\"" :   ## "text":"
+            read += 1
+        read += 8 #본문으로
+
+
         titlecache = "".join(titlecache) #titlecahce 를 문자열
         if titlecache[:4] != "템플릿:" and titlecache[:3] != "분류:":#(Template 아님)
             if count != -1 : linecache[0].append("\r\n")
@@ -777,8 +776,6 @@ while True:
         #line = line[read:]
         #read = 0
         #------------------------------------------
-        while line[read] != ')':
-            read += 1
         if len(linecache[1]) != 0:
             linecache[0].append("<br><hr>")
             linecache[0].append("".join(linecache[1]))
@@ -794,7 +791,6 @@ while True:
         #내용
         #</>
         #제목
-        read += 1 #(이때 리스트의 끝이면 세미콜론 등장)
     count = count + 1
     if count % 100 == 0 :
         print(count)
