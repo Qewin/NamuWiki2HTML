@@ -714,14 +714,21 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
 #
 #--------------------------------------------------
 print("Reading Cache")
-for i in range(0,25):  #50):
-    FileCache.append(infile.readline())
-line = "".join(FileCache).decode('unicode-escape')
+
+line = infile.read(50000000)
+print("Encoding...")
 #outfile.writelines(FileCache)
 #raise sdfS
 print("Converting...")
+checkpoint = time.time() # 문서 속도 측정 지표 변수
+DocNum = 0 # 문서 속도 측정 지표 변수
+Emergency = 0 # 캐시 고갈 여부
 while True:
     for i in range(0,100):
+        if len(line) - read < 250000 and full == 0 :
+            print("Cache Depleted")
+            Emergency = 1
+            break
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
         titlecache = list()
         isTemplate = False  # 필요없는 템플레이트 문서 스킵
@@ -745,6 +752,10 @@ while True:
 
 
         titlecache = "".join(titlecache) #titlecahce 를 문자열
+
+        ##if count % 25 == 0 : print(titlecache)
+
+        
         if titlecache[:4] != "템플릿:" and titlecache[:3] != "분류:":#(Template 아님)
             if count != -1 : linecache[0].append("\r\n")
             else: count = 0
@@ -791,33 +802,33 @@ while True:
         #내용
         #</>
         #제목
-    count = count + 1
-    if count % 100 == 0 :
-        print(count)
+        count += 1
+    if Emergency == 0 :
+        print("%d 개의 문서 변환" %count)
         print("진행 시간: %.02f 초" % (time.time() - exectime))
-        print("예상 시간: %.02f 분" % ((time.time() - exectime) / count * linecount /60))
-        print("남은 시간: %.02f 분" % ((time.time() - exectime) / count * (linecount - count) /60))
-    # ");\nINPUT
-    #   ^
-    # ");\nINPUT
-    #      ^
-    read += 2
+        print("현재 변환 속도: %.02f 문서/초" % ( (count - DocNum) / (time.time() - checkpoint) ) )
+        print("평균 변환 속도: %.02f 문서/초" % ( count / (time.time() - exectime) ) )
+        #print("예상 시간: %.02f 분" % ((time.time() - exectime) / count * linecount /60))
+        #print("남은 시간: %.02f 분" % ((time.time() - exectime) / count * (linecount - count) /60))
+        checkpoint = time.time()
+        DocNum = count
     outfile.writelines(linecache[0])
     linecache = [list(),list(),list(),list(),list()] # 문자열 캐시 초기화
     try:
-        if len(line) - read < 1500000:
+        if len(line) - read < 2000 or Emergency == 1:
+            print("Filling Cache")
+            Emergency = 0
             line = line[read:]
             read = 0
             if full == 0:
-                FileCache = list() # 초기화
-                FileCache.append(line)
-                for i in range(0,40):
-                    FileCache.append(infile.readline())
-                if FileCache[40] == "":
+                line2 = infile.read(50000000) 
+                if not line2 :
                     infile.close()
                     full = -1
-                line = "".join(FileCache).decode('unicode-escape')
-            elif line.count(';') == 0: raise out # 리스트도 비고 세미콜론 없으면 끝.
+                line += line2
+                line2 = ""
+                print(len(line))
+            elif line.count('\"') == 0: raise out # 리스트도 비고 세미콜론 없으면 끝.
     except:
         break
 print("Done!")
