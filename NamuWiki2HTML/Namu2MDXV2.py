@@ -451,6 +451,68 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
             errfile.writelines("무한루프 에러:%s?%s?%s\r\n" %(line[read-10:read], line[read], line[read+1:read+10]))
             read += 1
         readtm = read
+        #--------------------------
+        # 문법 스킵 시에도 들어가야 하는 sql문법(?)
+        #--------------------------
+        #\ 관련
+        if line[read] == '\\':
+            if line[read+1] == 'u': #\uXXXX\uXXXX
+                reed = read
+                while line[reed:reed+2] == "\\u":
+                    reed += 6                         # 마지막엔 reed자체는 u밖의 범위.
+                linecache[dir].append(codecs.decode(line[read:reed], 'unicode-escape'))
+                read = reed - 2
+            elif line[read:read+6] == "\\\'\\\'\\\'": # \'\'\' -> \'에 앞서게.
+                if strong :
+                    linecache[dir].append("<b>")
+                    strong = False
+                else:
+                    linecache[dir].append("</b>")
+                    strong = True
+                read += 4#뒤에서 +2
+            elif line[read+1] == 'n':
+                linecache[dir].append("<br>") # \n
+                contentLine = contentLine + 1 # 표를 위해 카운트
+                if not strong:
+                    linecache[dir].append("</b>")
+                    strong = True
+                if not cancelline:
+                    linecache[dir].append("</s></font>")
+                    cancelline = True
+                if not underline:
+                    linecache[dir].append("</u>")
+                    underline = True
+                if not down:
+                    linecache[dir].append("</sub>")
+                    down = True
+                if not up:
+                    linecache[dir].append("</sup>")
+                    up = True
+                if len(end)>=2 and end[1] == "=": break  #목차 처리
+                elif end == "||" and line[read+2:read+4] == "||":
+                    read += 2
+                    break #
+                elif end == "\\n":
+                    read += 2
+                    break # ">" 형 상자 처리
+                #여기에 다중줄과 일반 다음 표 구분 알고리즘
+                #
+                #
+            elif line[read+1] == '\\':   # \\
+                linecache[dir].append("\\")
+            elif line[read+1] == '\'':   # \'
+                linecache[dir].append("\'")
+            elif line[read+1] == '\"':   # \"
+                linecache[dir].append("\"")
+            elif line[read:read+4] == "\\n##": #주석 (\n##)
+                read += 2
+                while line[read:read+2] != "\\n" and line[read:read+2] != "\",":
+                    read += 1
+                #\n까지 옴
+                read -= 2
+            read += 2
+        ###############################3
+        
         #-------------------------------
         #기본 마크업
         #-------------------------------
@@ -464,7 +526,7 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
         #        italic = True
         #    read += 4
         #
-        if line[read:read+4] == "[목차]":
+        elif line[read:read+4] == "[목차]":
             linecache[0].append("TestTest") #목차로 덮어씨워질 부분
             listree = len(linecache[0]) - 1 # 0부터 시작
             if listree == -1:
@@ -581,67 +643,6 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                 read += 1
                 read = WikiParser(dir,read,"\\n")
             linecache[dir].append("</td></table>") # 표끝마치기
-        #--------------------------
-        # 문법 스킵 시에도 들어가야 하는 sql문법(?)
-        #--------------------------
-        #\ 관련
-        elif line[read] == '\\':
-            if line[read:read+6] == "\\\'\\\'\\\'": # \'\'\' -> \'에 앞서게.
-                if strong :
-                    linecache[dir].append("<b>")
-                    strong = False
-                else:
-                    linecache[dir].append("</b>")
-                    strong = True
-                read += 4#뒤에서 +2
-            elif line[read+1] == 'n':
-                linecache[dir].append("<br>") # \n
-                contentLine = contentLine + 1 # 표를 위해 카운트
-                if not strong:
-                    linecache[dir].append("</b>")
-                    strong = True
-                if not cancelline:
-                    linecache[dir].append("</s></font>")
-                    cancelline = True
-                if not underline:
-                    linecache[dir].append("</u>")
-                    underline = True
-                if not down:
-                    linecache[dir].append("</sub>")
-                    down = True
-                if not up:
-                    linecache[dir].append("</sup>")
-                    up = True
-                if len(end)>=2 and end[1] == "=": break  #목차 처리
-                elif end == "||" and line[read+2:read+4] == "||":
-                    read += 2
-                    break #
-                elif end == "\\n":
-                    read += 2
-                    break # ">" 형 상자 처리
-                #여기에 다중줄과 일반 다음 표 구분 알고리즘
-                #
-                #
-            elif line[read+1] == '\\':   # \\
-                linecache[dir].append("\\")
-            elif line[read+1] == '\'':   # \'
-                linecache[dir].append("\'")
-            elif line[read+1] == '\"':   # \"
-                linecache[dir].append("\"")
-            elif line[read:read+4] == "\\n##": #주석 (\n##)
-                read += 2
-                while line[read:read+2] != "\\n" and line[read:read+2] != "\",":
-                    read += 1
-                #\n까지 옴
-                read -= 2
-            elif line[read:read+2] == "\\u": #\uXXXX\uXXXX
-                reed = read
-                while line[reed:reed+2] == "\\u":
-                    reed += 6                         # 마지막엔 reed자체는 u밖의 범위.
-                linecache[dir].append(codecs.decode(line[read:reed], 'unicode-escape'))
-                read = reed - 2
-            read += 2
-        ###############################3
         elif line[read] == "/": #이미지 스킵.
             a = True
             for i in range(50):
@@ -722,12 +723,9 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
 print("Reading Cache")
 
 line = infile.read(50000000)
-print("Encoding...")
-#outfile.writelines(FileCache)
-#raise sdfS
 print("Converting...")
-checkpoint = time.time() # 문서 속도 측정 지표 변수
-DocNum = 0 # 문서 속도 측정 지표 변수
+#checkpoint = time.time() # 문서 속도 측정 지표 변수
+#DocNum = 0 # 문서 속도 측정 지표 변수
 while True:
     while (len(line) - read > 900000) or (full == -1 and len(line) - read > 30) :
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
@@ -753,7 +751,7 @@ while True:
         read += 8 #본문으로
 
 
-        titlecache = "".join(titlecache) #titlecahce 를 문자열
+        titlecache = codecs.decode( "".join(titlecache)  , 'unicode-escape')#titlecahce 를 문자열
 
         ##if count % 25 == 0 : print(titlecache)
     
@@ -779,7 +777,7 @@ while True:
             k = 0
             while line[read+k+1:read+k+3] != "\\n" and line[read+k+1:read+k+3] != "')":
                 k = k + 1
-            linecache[0].append(line[read:read+k+1]+"\">리다이렉트:"+codecs.decode(line[read:read+k+1] , 'unicode-escape')+"</a>")
+            linecache[0].append(codecs.decode(line[read:read+k+1], 'unicode-escape')+"\">리다이렉트:"+codecs.decode(line[read:read+k+1] , 'unicode-escape')+"</a>")
             read += k + 1
         else : read = WikiParser(0,read,"") #위키 문법
         #------------------------------------------
@@ -804,12 +802,12 @@ while True:
         count += 1
     print("%d 개의 문서 변환" %count)
     print("진행 시간: %.02f 초" % (time.time() - exectime))
-    print("현재 변환 속도: %.02f 문서/초" % ( (count - DocNum) / (time.time() - checkpoint) ) )
+    #print("현재 변환 속도: %.02f 문서/초" % ( (count - DocNum) / (time.time() - checkpoint) ) )
     print("평균 변환 속도: %.02f 문서/초" % ( count / (time.time() - exectime) ) )
     #print("예상 시간: %.02f 분" % ((time.time() - exectime) / count * linecount /60))
     #print("남은 시간: %.02f 분" % ((time.time() - exectime) / count * (linecount - count) /60))
-    checkpoint = time.time()
-    DocNum = count
+    #checkpoint = time.time()
+    #DocNum = count
     outfile.writelines(linecache[0])
     linecache = [list(),list(),list(),list(),list()] # 문자열 캐시 초기화
     try:
@@ -817,7 +815,7 @@ while True:
         line = line[read:]
         read = 0
         if full == 0:
-            line2 = infile.read(50000000) 
+            line2 = infile.read(50000000) ## 50000000
             if not line2 :
                 infile.close()
                 full = -1
