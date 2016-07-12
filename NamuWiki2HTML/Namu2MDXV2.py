@@ -7,8 +7,8 @@
 #최적화를 안 해서 속도가 느리니 Pypy로 실행해 주세요.
 #mdxbuilder에서 compactHTML/UTF-8 로 설정해서 변환하세요.
 
-##나무위키에 올라오는 데이터베이스 덤프 파일을 MDICT에 사용할 수 있도록 mdxbuilder에 사용 가능한 파일로 변환하는 프로그램
-##Copyright (C) 2015년 <Qewin> 
+##나무위키에 올라오는 데이터베이스 덤프 파일을 MDICT에 사용할 수 있도록 mdxbuilder에 사용 가능한 파일로 변환하는 프로그램(JSON 버전)
+##Copyright (C) 2015~2016 <Qewin> 
 ##이 프로그램은 자유 소프트웨어입니다. 소프트웨어 피이용허락자는 자유 소프트웨어 재단이 공표한 GNU GPL 2판 또는 그 이후 판을 임의로 선택해, 그 규정에 따라 프로그램을 개작하거나 재배포할 수 있습니다. 
 ##이 프로그램은 유용하게 사용되리라는 희망으로 배포되지만, 특정한 목적에 맞는 적합성 여부나 판매용으로 사용할 수 있다는 묵시적인 보증을 포함한 어떠한 형태의 보증도 제공하지 않습니다. 보다 자세한 사항은 GNU GPL을 참고하시기 바랍니다. 
 ##GNU GPL은 이 프로그램과 함께 제공됩니다. 만약 이 문서가 누락되어 있다면 자유 소프트웨어 재단으로 문의하시기 바랍니다(자유 소프트웨어 재단: Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA). 
@@ -634,6 +634,12 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                     read += 1
                 #\n까지 옴
                 read -= 2
+            elif line[read:read+2] == "\\u": #\uXXXX\uXXXX
+                reed = read
+                while line[reed:reed+2] == "\\u":
+                    reed += 6                         # 마지막엔 reed자체는 u밖의 범위.
+                linecache[dir].append(codecs.decode(line[read:reed], 'unicode-escape'))
+                read = reed - 2
             read += 2
         ###############################3
         elif line[read] == "/": #이미지 스킵.
