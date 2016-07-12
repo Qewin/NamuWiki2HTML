@@ -729,7 +729,7 @@ print("Converting...")
 checkpoint = time.time() # 문서 속도 측정 지표 변수
 DocNum = 0 # 문서 속도 측정 지표 변수
 while True:
-    while len(line) - read > 900000 or (full == -1 and len(line) - read > 30) :
+    while (len(line) - read > 900000) or (full == -1 and len(line) - read > 30) :
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
         titlecache = list()
         isTemplate = False  # 필요없는 템플레이트 문서 스킵
@@ -801,14 +801,15 @@ while True:
         #내용
         #</>
         #제목
-        print("%d 개의 문서 변환" %count)
-        print("진행 시간: %.02f 초" % (time.time() - exectime))
-        print("현재 변환 속도: %.02f 문서/초" % ( (count - DocNum) / (time.time() - checkpoint) ) )
-        print("평균 변환 속도: %.02f 문서/초" % ( count / (time.time() - exectime) ) )
-        #print("예상 시간: %.02f 분" % ((time.time() - exectime) / count * linecount /60))
-        #print("남은 시간: %.02f 분" % ((time.time() - exectime) / count * (linecount - count) /60))
-        checkpoint = time.time()
-        DocNum = count
+        count += 1
+    print("%d 개의 문서 변환" %count)
+    print("진행 시간: %.02f 초" % (time.time() - exectime))
+    print("현재 변환 속도: %.02f 문서/초" % ( (count - DocNum) / (time.time() - checkpoint) ) )
+    print("평균 변환 속도: %.02f 문서/초" % ( count / (time.time() - exectime) ) )
+    #print("예상 시간: %.02f 분" % ((time.time() - exectime) / count * linecount /60))
+    #print("남은 시간: %.02f 분" % ((time.time() - exectime) / count * (linecount - count) /60))
+    checkpoint = time.time()
+    DocNum = count
     outfile.writelines(linecache[0])
     linecache = [list(),list(),list(),list(),list()] # 문자열 캐시 초기화
     try:
