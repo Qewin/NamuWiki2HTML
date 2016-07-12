@@ -728,13 +728,8 @@ print("Encoding...")
 print("Converting...")
 checkpoint = time.time() # 문서 속도 측정 지표 변수
 DocNum = 0 # 문서 속도 측정 지표 변수
-Emergency = 0 # 캐시 고갈 여부
 while True:
-    for i in range(0,100):
-        if len(line) - read < 250000 and full == 0 :
-            print("Cache Depleted")
-            Emergency = 1
-            break
+    while len(line) - read > 900000 or (full == -1 and len(line) - read > 30) :
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
         titlecache = list()
         isTemplate = False  # 필요없는 템플레이트 문서 스킵
@@ -744,6 +739,7 @@ while True:
             titlecache.append("틀:")
         elif line[read+13] == "2" or line[read-1] == "3": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
             titlecache.append("분류:")
+            isTemplate = True
         elif line[read+13] == "6":
             titlecache.append("나무위키:")
         while line[read:read+9] != "\"title\":\"" :  #제목 "title":"
@@ -760,33 +756,30 @@ while True:
         titlecache = "".join(titlecache) #titlecahce 를 문자열
 
         ##if count % 25 == 0 : print(titlecache)
-
-        
-        if titlecache[:4] != "템플릿:" and titlecache[:3] != "분류:":#(Template 아님)
+    
+        if isTemplate :
+            while True:
+                if line[read:read+14] == "\"contributors\"": #"contributors"
+                    break
+        else:
             if count != -1 : linecache[0].append("\r\n")
             else: count = 0
             linecache[0].append("%s\r\n<b><font size=\"5\">%s</font></b><br><hr>" %(titlecache, titlecache))
             #제목
             #(항목 내 제목)
             #------------(<hr>)
-        else:       #Template이면
-            isTemplate = True
+            
         #----------------------------------------
         #|문법 해석부 (func화 해서 제목에도/재귀)     |
         #----------------------------------------
         #아래 : \', 는 계속, (\아님)', 이면 탈출 (\ 쪽이 확률이 높음.)
-        
-        if isTemplate :
-            while True:
-                if line[read:read+14] == "\"contributors\"": #"contributors"
-                    break
-        elif line[read:read+9] == "#redirect": #리다이렉트
+        if line[read:read+9] == "#redirect": #리다이렉트
             linecache[0].append("<a href=\"entry://")
             read += 10 # 공백 땜에 9 + 1
             k = 0
             while line[read+k+1:read+k+3] != "\\n" and line[read+k+1:read+k+3] != "')":
                 k = k + 1
-            linecache[0].append(line[read:read+k+1]+"\">리다이렉트:"+line[read:read+k+1]+"</a>")
+            linecache[0].append(line[read:read+k+1]+"\">리다이렉트:"+codecs.decode(line[read:read+k+1] , 'unicode-escape')+"</a>")
             read += k + 1
         else : read = WikiParser(0,read,"") #위키 문법
         #------------------------------------------
@@ -808,8 +801,6 @@ while True:
         #내용
         #</>
         #제목
-        count += 1
-    if Emergency == 0 :
         print("%d 개의 문서 변환" %count)
         print("진행 시간: %.02f 초" % (time.time() - exectime))
         print("현재 변환 속도: %.02f 문서/초" % ( (count - DocNum) / (time.time() - checkpoint) ) )
@@ -821,20 +812,18 @@ while True:
     outfile.writelines(linecache[0])
     linecache = [list(),list(),list(),list(),list()] # 문자열 캐시 초기화
     try:
-        if len(line) - read < 2000 or Emergency == 1:
-            print("Filling Cache")
-            Emergency = 0
-            line = line[read:]
-            read = 0
-            if full == 0:
-                line2 = infile.read(50000000) 
-                if not line2 :
-                    infile.close()
-                    full = -1
-                line += line2
-                line2 = ""
-                print(len(line))
-            elif line.count('\"') == 0: raise out # 리스트도 비고 세미콜론 없으면 끝.
+        print("Filling Cache")
+        line = line[read:]
+        read = 0
+        if full == 0:
+            line2 = infile.read(50000000) 
+            if not line2 :
+                infile.close()
+                full = -1
+            line += line2
+            line2 = ""
+            print(len(line))
+        elif line.count('\"') == 0: raise out # 리스트도 비고 세미콜론 없으면 끝.
     except:
         break
 print("Done!")
