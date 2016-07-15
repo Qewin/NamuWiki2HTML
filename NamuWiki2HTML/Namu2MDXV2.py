@@ -35,11 +35,8 @@ exectime = time.time() # 시작시간
 FileCache = list()
 x = 0       #표 용이지만 표인지 판별을 위해 글로벌
 listree = -1 # 목차 리스트
-linecount = 2474
+#linecount = 2474
 TableOn = False # 테이블 안인지
-#2399 인듯
-#현재 간노스역이 마지막 항목
-#
 xcount = 1 #주석은 1부터.
 index = [0,0,0,0,0,0,0,0,0,0,0]
 
@@ -55,8 +52,7 @@ def TripleBrace(dir,read):
     if line[read+3:read+9].lower() == "#!html":    #html 스킵 신공
         read +=9
         if titlecache[:2] != "틀:":
-            while line [read:read+3] != "}}}":
-                read += 1
+            read = line.find("}}}", read)
             read += 3
         else:
             while line [read:read+3] != "}}}":
@@ -69,12 +65,9 @@ def TripleBrace(dir,read):
             read += 3
     elif line [read+3] == '#':              # 색
         read += 4
-        linecache[dir].append("<font color=\"")
-        while line[read] != ' ':
-            linecache[dir].append(line[read])
-            read += 1
-        linecache[dir].append("\">")
-        read += 1                     #빈칸 건너뛰기
+        i = line.find(" ", read + 1)
+        linecache[dir].append("<font color=\"%s>" % line[read:i])
+        read = i + 1                     #빈칸 건너뛰기
         read = WikiParser(dir,read,"}}}")
         linecache[dir].append("</font>")
         read += 3
@@ -327,9 +320,7 @@ def indexFunc (dir,read,index):
     linecache[2].append("</a>")
     read = WikiParser(3,read," =")
     if line[read:read+2] == " =": 
-        read += 1
-        while line[read] == "=":
-            read += 1
+        read = line.find("=",read+1) #read + 1 이 되어야 하는 부분
     linecache[dir].append("".join(linecache[3]))
     linecache[2].append("".join(linecache[3]))
     linecache[3] = list()
@@ -727,38 +718,27 @@ print("Converting...")
 #checkpoint = time.time() # 문서 속도 측정 지표 변수
 #DocNum = 0 # 문서 속도 측정 지표 변수
 while True:
-    while (len(line) - read > 900000) or (full == -1 and len(line) - read > 30) :
+    while (len(line) - read > 900000) or full == -1 :
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
         titlecache = list()
         isTemplate = False  # 필요없는 템플레이트 문서 스킵
-        while line[read:read+13] != "\"namespace\":\"": #read 는 개수보다 1개 작음
-            read += 1
-        if line[read+13] == "1":
+        read = line.find("\"namespace\":\"",read) + 13 #read 는 개수보다 1개 작음
+        if not read : break # if read = 0
+        if line[read] == "1":
             titlecache.append("틀:")
-        elif line[read+13] == "2" or line[read-1] == "3": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
+        elif line[read] == "2" or line[read] == "3": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
             titlecache.append("분류:")
             isTemplate = True
-        elif line[read+13] == "6":
+        elif line[read] == "6":
             titlecache.append("나무위키:")
-        while line[read:read+9] != "\"title\":\"" :  #제목 "title":"
-            read += 1
-        read += 9
+        read = line.find( "\"title\":\"", read) + 9  #제목 "title":"
         while line[read:read+3] != "\",\"" : ## title 끝으로
             titlecache.append(line[read])
             read += 1
-        while line[read:read+8] != "\"text\":\"" :   ## "text":"
-            read += 1
-        read += 8 #본문으로
-
-
+        read = line.find( "\"text\":\"",read) + 8   ## "text":"^
+        
         titlecache = codecs.decode( "".join(titlecache)  , 'unicode-escape')#titlecahce 를 문자열
-
-        ##if count % 25 == 0 : print(titlecache)
-    
-        if isTemplate :
-            while True:
-                if line[read:read+14] == "\"contributors\"": #"contributors"
-                    break
+        if isTemplate : read = line.find("\"contributors\"",read) #"contributors"
         else:
             if count != -1 : linecache[0].append("\r\n")
             else: count = 0
@@ -768,7 +748,7 @@ while True:
             #------------(<hr>)
             
         #----------------------------------------
-        #|문법 해석부 (func화 해서 제목에도/재귀)     |
+        #|문법 해석부     |
         #----------------------------------------
         #아래 : \', 는 계속, (\아님)', 이면 탈출 (\ 쪽이 확률이 높음.)
         if line[read:read+9] == "#redirect": #리다이렉트
@@ -785,9 +765,7 @@ while True:
         #read = 0
         #------------------------------------------
         if len(linecache[1]) != 0:
-            linecache[0].append("<br><hr>")
-            linecache[0].append("".join(linecache[1]))
-            linecache[0].append("<br><br>")
+            linecache[0].append("<br><hr>%s<br><br>"%("".join(linecache[1])))
             linecache[1] = list()
         if listree != -1:
             linecache[0][listree] = "<table border=\"1\"><td>%s</td></table>" %("".join(linecache[2]))
@@ -806,15 +784,13 @@ while True:
     print("평균 변환 속도: %.02f 문서/초" % ( count / (time.time() - exectime) ) )
     #print("예상 시간: %.02f 분" % ((time.time() - exectime) / count * linecount /60))
     #print("남은 시간: %.02f 분" % ((time.time() - exectime) / count * (linecount - count) /60))
-    #checkpoint = time.time()
-    #DocNum = count
     outfile.writelines(linecache[0])
     linecache = [list(),list(),list(),list(),list()] # 문자열 캐시 초기화
     try:
         print("Filling Cache")
         line = line[read:]
         read = 0
-        if full == 0:
+        if not full: # if full == 0
             line2 = infile.read(50000000) ## 50000000
             if not line2 :
                 infile.close()
