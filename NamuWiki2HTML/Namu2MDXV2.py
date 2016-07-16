@@ -20,7 +20,7 @@ import time
 infile = open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r') #JSON 경로
 outfile = codecs.open("namu.txt", 'w', 'utf-8') #출력 파일 경로
 errfile = open("err.txt", 'w') #에러 파일 경로
-count = -1 #라인 수(-1인 이유는 \r\n때문. 아래서 0으로 수정됨) 
+count = 0 #문서 수
 i = 0
 full = 0 #다 읽었는지 여부
 read = 0
@@ -345,9 +345,14 @@ def SqBracket(dir,read):
             if line[read+k+1:read+k+3] == "#s": j = k #표시되는 거에는 #s- 가 표시되면 안됨
             k = k + 1
         if j == 0: j = k # #s- 가 없을 수도.
-        if line[read] == "/" and line[read+1] != "]": # 앞에 제목 안붙
-            linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(titlecache,codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1]), 'unicode-escape').replace("\\",""))
-        else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1], 'unicode-escape').replace("\\","")))
+        try:
+            if line[read] == "/" and line[read+1] != "]": # 앞에 제목 안붙
+                linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(titlecache,codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1]), 'unicode-escape').replace("\\",""))
+            else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1], 'unicode-escape').replace("\\","")))
+        except:
+            errfile.write("링크 에러:%s(%s)\r\n" %(titlecache,line[read-10:read+1]))
+            if line[read] == "/" and line[read+1] != "]": linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(line[read:read+k+1],line[read:read+j+1])
+            else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(line[read:read+k+1],line[read:read+j+1]))
         #replace는 \'같은 거 처리
         read += k + 1
         while line[read-2:read] != "]]":
@@ -425,6 +430,7 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                 reed = read
                 while line[reed:reed+2] == "\\u":
                     reed += 6                         # 마지막엔 reed자체는 u밖의 범위.
+                if line[reed+1:reed+3] =="\\u" and line[reed] != "\\": reed += 1
                 linecache[dir].append(codecs.decode(line[read:reed], 'unicode-escape'))
                 read = reed - 2
             elif line[read:read+6] == "\\\'\\\'\\\'": # \'\'\' -> \'에 앞서게.
@@ -684,59 +690,50 @@ print("Reading Cache")
 
 line = infile.read(50000000)
 print("Converting...")
-#checkpoint = time.time() # 문서 속도 측정 지표 변수
-#DocNum = 0 # 문서 속도 측정 지표 변수
+linecache[0].append("이 파일에 대하여\r\n태양 만세!\r\n</>") #앞에 생기는 잉여 \r\n 때문에
 while True:
     while (len(line) - read > 900000) or full == -1 :
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
         titlecache = list()
-        isTemplate = False  # 필요없는 템플레이트 문서 스킵
         read = line.find("\"namespace\":\"",read) + 13 #read 는 개수보다 1개 작음
         if read == -1 :
             if full == -1: read = len(line) - 1
             else: break 
         if line[read] == "1": titlecache.append("틀:")
-        elif line[read] == "2" or line[read] == "3": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
-            titlecache.append("분류:")
-            isTemplate = True
+        elif line[read] == "2" or line[read] == "3": # 2는 분류, 3은 이미지.
+            read = line.find("\"contributors\"",read) #"contributors"
+            continue
         elif line[read] == "6": titlecache.append("나무위키:")
         read = line.find( "\"title\":\"", read) + 9  #제목 "title":"
-        while line[read:read+3] != "\",\"" : ## title 끝으로
-            titlecache.append(line[read])
-            read += 1
-        read = line.find( "\"text\":\"",read) + 8   ## "text":"^
-        
-        titlecache = codecs.decode( "".join(titlecache)  , 'unicode-escape')#titlecahce 를 문자열
-        if isTemplate : read = line.find("\"contributors\"",read) #"contributors"
-        else:
-            if count != -1 : linecache[0].append("\r\n")
-            else: count = 0
-            linecache[0].append("%s\r\n<b><font size=\"5\">%s</font></b><br><hr>" %(titlecache, titlecache))
-            #제목
-            #(항목 내 제목)
-            #------------(<hr>)
+        reed = line.find("\",\"",read)
+        titlecache = codecs.decode( line[read:reed] , 'unicode-escape')#titlecahce 를 문자열
+                                                                                
+        read = line.find( "\"text\":\"", reed) + 8   ## "text":"^
+        linecache[0].append("\r\n%s\r\n<b><font size=\"5\">%s</font></b><br><hr>" %(titlecache, titlecache))
+        #제목
+        #(항목 내 제목)
+        #------------(<hr>)
             
         #----------------------------------------
         #|문법 해석부     |
         #----------------------------------------
         if line[read:read+9] == "#redirect": #리다이렉트
-            linecache[0].append("<a href=\"entry://")
-            read += 10 # 공백 땜에 9 + 1
-            k = 0
-            while line[read+k+1:read+k+3] != "\\n": k = k + 1
-            linecache[0].append(codecs.decode(line[read:read+k+1], 'unicode-escape')+"\">리다이렉트:"+codecs.decode(line[read:read+k+1] , 'unicode-escape')+"</a>")
-            read += k + 1
-        else : read = WikiParser(0,read,"") #위키 문법
-        if len(linecache[1]) != 0:
-            linecache[0].append("<br><hr>%s<br><br>"%("".join(linecache[1])))
-            linecache[1] = list()
-        if listree != -1:
-            linecache[0][listree] = "<table border=\"1\"><td>%s</td></table>" %("".join(linecache[2]))
-            linecache[2] = list()
-            listree = -1
-        elif len(linecache[2]) != 0:
-            linecache[2] = list()
-        if not isTemplate : linecache[0].append("\r\n</>")
+            read += 10
+            reed = line.find("\\n",read)
+            linecache[0].append("<a href=\"entry://%s\">리다이렉트:%s</a>" %( codecs.decode(line[read:read+k+1], 'unicode-escape') , codecs.decode(line[read:read+k+1] , 'unicode-escape') ) )
+            read = reed                                                      
+        else :
+            read = WikiParser(0,read,"") #위키 문법
+            if len(linecache[1]) != 0:
+                linecache[0].append("<br><hr>%s<br><br>"%("".join(linecache[1])))
+                linecache[1] = list()
+            if listree != -1:
+                linecache[0][listree] = "<table border=\"1\"><td>%s</td></table>" %("".join(linecache[2]))
+                linecache[2] = list()
+                listree = -1
+            elif len(linecache[2]) != 0:
+                linecache[2] = list()
+        linecache[0].append("\r\n</>")
         #내용
         #</>
         #제목
@@ -758,8 +755,7 @@ while True:
             line += line2
             line2 = ""
         elif line.count('\"') == 0: raise out # 리스트도 비고 세미콜론 없으면 끝.
-    except:
-        break
+    except: break
 print("Done!")
 print(count)
 print("빌드 시간: %.02f분" % ((time.time() - exectime) / 60))
