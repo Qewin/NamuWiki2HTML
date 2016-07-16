@@ -351,7 +351,7 @@ def SqBracket(dir,read):
             else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1], 'unicode-escape').replace("\\","")))
         except:
             errfile.write("링크 에러:%s(%s)\r\n" %(titlecache,line[read-10:read+1]))
-            if line[read] == "/" and line[read+1] != "]": linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(line[read:read+k+1],line[read:read+j+1])
+            if line[read] == "/" and line[read+1] != "]": linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(line[read:read+k+1],line[read:read+j+1]))
             else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(line[read:read+k+1],line[read:read+j+1]))
         #replace는 \'같은 거 처리
         read += k + 1
@@ -428,11 +428,10 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
         if line[read] == '\\':
             if line[read+1] == 'u': #\uXXXX\uXXXX
                 reed = read
-                while line[reed:reed+2] == "\\u":
-                    reed += 6                         # 마지막엔 reed자체는 u밖의 범위.
+                while line[reed:reed+2] == "\\u": reed += 6                         # 마지막엔 reed자체는 u밖의 범위.
                 if line[reed+1:reed+3] =="\\u" and line[reed] != "\\": reed += 1
                 linecache[dir].append(codecs.decode(line[read:reed], 'unicode-escape'))
-                read = reed - 2
+                read = reed
             elif line[read:read+6] == "\\\'\\\'\\\'": # \'\'\' -> \'에 앞서게.
                 if strong :
                     linecache[dir].append("<b>")
@@ -440,7 +439,7 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                 else:
                     linecache[dir].append("</b>")
                     strong = True
-                read += 4#뒤에서 +2
+                read += 6
             elif line[read+1] == 'n':
                 linecache[dir].append("<br>") # \n
                 contentLine = contentLine + 1 # 표를 위해 카운트
@@ -466,20 +465,19 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                 elif end == "\\n":
                     read += 2
                     break # ">" 형 상자 처리
+                read += 2
                 #여기에 다중줄과 일반 다음 표 구분 알고리즘
             elif line[read+1] == '\\':   # \\
                 linecache[dir].append("\\")
+                read += 2
             elif line[read+1] == '\'':   # \'
                 linecache[dir].append("\'")
+                read += 2
             elif line[read+1] == '\"':   # \"
                 linecache[dir].append("\"")
-            elif line[read:read+4] == "\\n##": #주석 (\n##)
                 read += 2
-                while line[read:read+2] != "\\n" and line[read:read+2] != "\",":
-                    read += 1
-                #\n까지 옴
-                read -= 2
-            read += 2
+            elif line[read:read+4] == "\\n##": #주석 (\n##)
+                read =line.find( "\\n" , read + 2) #\n까지 옴
         #-------------------------------
         #기본 마크업
         #-------------------------------
@@ -720,7 +718,7 @@ while True:
         if line[read:read+9] == "#redirect": #리다이렉트
             read += 10
             reed = line.find("\\n",read)
-            linecache[0].append("<a href=\"entry://%s\">리다이렉트:%s</a>" %( codecs.decode(line[read:read+k+1], 'unicode-escape') , codecs.decode(line[read:read+k+1] , 'unicode-escape') ) )
+            linecache[0].append("<a href=\"entry://%s\">리다이렉트:%s</a>" %( codecs.decode(line[read:reed], 'unicode-escape') , codecs.decode(line[read:reed] , 'unicode-escape') ) )
             read = reed                                                      
         else :
             read = WikiParser(0,read,"") #위키 문법
