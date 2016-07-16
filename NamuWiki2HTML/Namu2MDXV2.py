@@ -17,8 +17,6 @@
 
 import codecs
 import time
-#import pdb
-##infile = codecs.open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r', 'utf-8') #JSON 경로
 infile = open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r') #JSON 경로
 outfile = codecs.open("namu.txt", 'w', 'utf-8') #출력 파일 경로
 errfile = open("err.txt", 'w') #에러 파일 경로
@@ -36,7 +34,6 @@ exectime = time.time() # 시작시간
 FileCache = list()
 x = 0       #표 용이지만 표인지 판별을 위해 글로벌
 listree = -1 # 목차 리스트
-#linecount = 2474
 TableOn = False # 테이블 안인지
 xcount = 1 #주석은 1부터.
 index = [0,0,0,0,0,0,0,0,0,0,0]
@@ -52,9 +49,7 @@ def TripleBrace(dir,read):
     global linecache
     if line[read+3:read+9].lower() == "#!html":    #html 스킵 신공
         read +=9
-        if titlecache[:2] != "틀:":
-            read = line.find("}}}", read)
-            read += 3
+        if titlecache[:2] != "틀:": read = line.find("}}}", read) + 3
         else:
             while line [read:read+3] != "}}}":
                 if line[read] == "\"":
@@ -67,16 +62,13 @@ def TripleBrace(dir,read):
     elif line [read+3] == '#':              # 색
         read += 4
         i = line.find(" ", read + 1)
-        linecache[dir].append("<font color=\"%s>" % line[read:i])
-        read = i + 1                     #빈칸 건너뛰기
-        read = WikiParser(dir,read,"}}}")
+        linecache[dir].append("<font color=\"%s>" % line[read:i])         
+        read = WikiParser(dir,i + 1,"}}}")#i+1 인 건 빈칸 건너뛰기 위해
         linecache[dir].append("</font>")
         read += 3
     elif line[read+3] == "+":
-        read += 3
-        linecache[dir].append("<font size=\"%s\">"%line[read:read+2])
-        read += 2
-        read = WikiParser(dir,read,"}}}")
+        linecache[dir].append("<font size=\"%s\">"%line[read+3:read+5])
+        read = WikiParser(dir,read+5,"}}}")
         if line[read] == "}" : read += 3
         linecache[dir].append("</font>")
     else:                                   #문법 무시
@@ -141,9 +133,6 @@ def TripleBrace(dir,read):
 #--------------------------------------------------
 def newTableFunc(dir,read):
     global titlecache
-    #if titlecache == "동방 프로젝트":
-    #    import pdb
-    #    pdb.set_trace()
     global line
     global linecache
     #re, isFake 지역
@@ -171,7 +160,6 @@ def newTableFunc(dir,read):
     xFull = 0
     while True: #표 || 해석부
         l = 0 #|| 개수 세기 위한 변수.
-        #print(line[read:read+2])
         while line[read:read+2] == "||": #여기는 || 를 받아야 정상이다.
             l += 1
             read += 2                                                   #read를 건드리지 않기 위한 변수
@@ -179,7 +167,6 @@ def newTableFunc(dir,read):
         re = read
         while line[re:re+2] != "\\n" and line[re:re+2] !="\",":
             if line[re] != ' ' and line[re] !='	':
-                #print("%s,%s"%(line[read:read+2],line[re-2:re+2]))
                 isVacant = False
                 break
             re += 1
@@ -252,14 +239,12 @@ def newTableFunc(dir,read):
                                     read += 1         #건너뛰기
                                 read += 1             #> 뒤로
                     elif line[read:read+6] == "<align" or line[read:read+6] == "<bgcol" or line[read:read+6] == "<width":
-                        read += 1
-                        re = line.find('>',read)
+                        re = line.find('>',read+1)
                         linecache[4].append(" %s" %line[read:re])
                         read = re + 1
                     elif line[read:read+2] == "<#":
-                        read += 1
                         linecache[4].append(" bgcolor=")
-                        re = line.find('>',read)
+                        re = line.find('>',read+1)
                         linecache[4].append(line[read:re])
                         read = re + 1
                     else:                           #나머지는 일단 나중에
@@ -281,9 +266,6 @@ def newTableFunc(dir,read):
 
 #--------------------------------------------------
 def indexFunc (dir,read,index):
-    #if titlecache == "김지현":
-    #    import pdb
-    #    pdb.set_trace()
     global line
     global linecache
     k = read
@@ -313,15 +295,10 @@ def indexFunc (dir,read,index):
         i = i + 1
     indlist = "".join(linecache[3])
     linecache[3] = list()
-    linecache[dir].append("<a name=\"s-%s\"><font color=\"blue\" size=\"5\">" %(indlist[:-1]))
-    linecache[2].append("%s<a href=\"entry://#s-%s\">" %(("&nbsp"*where),(indlist[:-1])))#   1.2.3.
-    linecache[dir].append(indlist)
-    linecache[2].append(indlist)
-    linecache[dir].append("</font></a>")
-    linecache[2].append("</a>")
+    linecache[dir].append("<a name=\"s-%s\"><font color=\"blue\" size=\"5\">%s</font></a>" %(indlist[:-1], indlist))
+    linecache[2].append("%s<a href=\"entry://#s-%s\">%s</a>" %(("&nbsp"*where),(indlist[:-1]) , indlist))#   1.2.3.
     read = WikiParser(3,read," =")
-    if line[read:read+2] == " =": 
-        read = line.find("=",read+1) #read + 1 이 되어야 하는 부분
+    if line[read:read+2] == " =": read = line.find("=",read+1) #read + 1 이 되어야 하는 부분
     linecache[dir].append("".join(linecache[3]))
     linecache[2].append("".join(linecache[3]))
     linecache[3] = list()
@@ -341,12 +318,14 @@ def SqBracket(dir,read):
         return read
     temp1 = False
     temp2 = False
+    weed = 0
     read += 2
     k = 0
     if line[read:read+7] == "http://" or line[read:read+8] == "https://" :
         temp2 = True
     while line[read+k:read+2+k] != "]]" and line[read+k:read+2+k] != "||": #||는 문법 오류 해결용
         if line[read+k] == '|':
+            weed = read + k
             temp1 = True
         #1 : | 들어감 0: | 안들어감 3: | 들어감 http ([외]항목) 2: | 안들어감 http (스킵)
         k = k + 1
@@ -354,13 +333,9 @@ def SqBracket(dir,read):
         linecache[dir].append("<a href=\"entry://")
         if line[read] == "/" and line[read+1] != "|": #앞에 제목 안붙
             linecache[dir].append(titlecache)
-        while line[read] != '|':
-            if line[read] == "\\": read += 1
-            linecache[dir].append(line[read])
-            read += 1
-        read += 1
+        linecache[dir].append(codecs.decode(line[read:weed], 'unicode-escape').replace("\\",""))
         linecache[dir].append("\">")
-        read = WikiParser(dir,read,"]]")
+        read = WikiParser(dir,weed+1,"]]")
         linecache[dir].append("</a>")
         if line[read:read+2] == "]]": read += 2
     elif temp1 == False and temp2 == False: # 0
@@ -371,8 +346,8 @@ def SqBracket(dir,read):
             k = k + 1
         if j == 0: j = k # #s- 가 없을 수도.
         if line[read] == "/" and line[read+1] != "]": # 앞에 제목 안붙
-            linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(titlecache,line[read:read+k+1].replace("\\",""),line[read:read+j+1]))
-        else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(line[read:read+k+1].replace("\\",""),line[read:read+j+1]))
+            linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(titlecache,codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1]), 'unicode-escape').replace("\\",""))
+        else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1], 'unicode-escape').replace("\\","")))
         #replace는 \'같은 거 처리
         read += k + 1
         while line[read-2:read] != "]]":
@@ -409,8 +384,6 @@ def extra(dir,xcount,read): #[*
         read = k
     read = WikiParser(1,read,"]")
     if line[read] == "]": read += 1 #",대비
-    #linecache[0].append
-    #WikiParser(1,read,"]")
     return xcount,read
 #----------------------------------------------
 #본 문법 함수
@@ -439,9 +412,9 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
     readtm = -1
     global listree
     while True:
-        if read == readtm: #무한루프 에러 기록.
+        if read <= readtm: #무한루프 에러 기록.
             errfile.writelines("무한루프 에러:%s?%s?%s\r\n" %(line[read-10:read], line[read], line[read+1:read+10]))
-            read += 1
+            read = readtm + 1
         readtm = read
         #--------------------------
         # 문법 스킵 시에도 들어가야 하는 sql문법(?)
@@ -488,8 +461,6 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                     read += 2
                     break # ">" 형 상자 처리
                 #여기에 다중줄과 일반 다음 표 구분 알고리즘
-                #
-                #
             elif line[read+1] == '\\':   # \\
                 linecache[dir].append("\\")
             elif line[read+1] == '\'':   # \'
@@ -503,8 +474,6 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                 #\n까지 옴
                 read -= 2
             read += 2
-        ###############################3
-        
         #-------------------------------
         #기본 마크업
         #-------------------------------
@@ -522,7 +491,6 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
             linecache[0].append("TestTest") #목차로 덮어씨워질 부분
             listree = len(linecache[0]) - 1 # 0부터 시작
             if listree == -1:
-                #print("Found Ya")
                 listree = 0
             read += 4
         elif line[read:read+2] == ",,":
@@ -724,14 +692,14 @@ while True:
         titlecache = list()
         isTemplate = False  # 필요없는 템플레이트 문서 스킵
         read = line.find("\"namespace\":\"",read) + 13 #read 는 개수보다 1개 작음
-        if not read : break # if read = 0
-        if line[read] == "1":
-            titlecache.append("틀:")
+        if read == -1 :
+            if full == -1: read = len(line) - 1
+            else: break 
+        if line[read] == "1": titlecache.append("틀:")
         elif line[read] == "2" or line[read] == "3": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
             titlecache.append("분류:")
             isTemplate = True
-        elif line[read] == "6":
-            titlecache.append("나무위키:")
+        elif line[read] == "6": titlecache.append("나무위키:")
         read = line.find( "\"title\":\"", read) + 9  #제목 "title":"
         while line[read:read+3] != "\",\"" : ## title 끝으로
             titlecache.append(line[read])
@@ -751,20 +719,14 @@ while True:
         #----------------------------------------
         #|문법 해석부     |
         #----------------------------------------
-        #아래 : \', 는 계속, (\아님)', 이면 탈출 (\ 쪽이 확률이 높음.)
         if line[read:read+9] == "#redirect": #리다이렉트
             linecache[0].append("<a href=\"entry://")
             read += 10 # 공백 땜에 9 + 1
             k = 0
-            while line[read+k+1:read+k+3] != "\\n" and line[read+k+1:read+k+3] != "')":
-                k = k + 1
+            while line[read+k+1:read+k+3] != "\\n": k = k + 1
             linecache[0].append(codecs.decode(line[read:read+k+1], 'unicode-escape')+"\">리다이렉트:"+codecs.decode(line[read:read+k+1] , 'unicode-escape')+"</a>")
             read += k + 1
         else : read = WikiParser(0,read,"") #위키 문법
-        #------------------------------------------
-        #line = line[read:]
-        #read = 0
-        #------------------------------------------
         if len(linecache[1]) != 0:
             linecache[0].append("<br><hr>%s<br><br>"%("".join(linecache[1])))
             linecache[1] = list()
@@ -779,16 +741,13 @@ while True:
         #</>
         #제목
         count += 1
-    print("%d 개의 문서 변환" %count)
-    print("진행 시간: %.02f 초" % (time.time() - exectime))
-    #print("현재 변환 속도: %.02f 문서/초" % ( (count - DocNum) / (time.time() - checkpoint) ) )
-    print("평균 변환 속도: %.02f 문서/초" % ( count / (time.time() - exectime) ) )
-    #print("예상 시간: %.02f 분" % ((time.time() - exectime) / count * linecount /60))
-    #print("남은 시간: %.02f 분" % ((time.time() - exectime) / count * (linecount - count) /60))
+    if (read % 3) == 0:
+        print("%d 개의 문서 변환" %count)
+        print("진행 시간: %.02f 초" % (time.time() - exectime))
+        print("평균 변환 속도: %.02f 문서/초" % ( count / (time.time() - exectime) ) )
     outfile.writelines(linecache[0])
     linecache = [list(),list(),list(),list(),list()] # 문자열 캐시 초기화
     try:
-        print("Filling Cache")
         line = line[read:]
         read = 0
         if not full: # if full == 0
@@ -798,7 +757,6 @@ while True:
                 full = -1
             line += line2
             line2 = ""
-            print(len(line))
         elif line.count('\"') == 0: raise out # 리스트도 비고 세미콜론 없으면 끝.
     except:
         break
