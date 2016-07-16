@@ -18,9 +18,10 @@
 import codecs
 import time
 #import pdb
-infile = codecs.open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r', 'utf-8') #JSON 경로
+##infile = codecs.open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r', 'utf-8') #JSON 경로
+infile = open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r') #JSON 경로
 outfile = codecs.open("namu.txt", 'w', 'utf-8') #출력 파일 경로
-errfile = codecs.open("err.txt", 'w', 'utf-8') #에러 파일 경로
+errfile = open("err.txt", 'w') #에러 파일 경로
 count = -1 #라인 수(-1인 이유는 \r\n때문. 아래서 0으로 수정됨) 
 i = 0
 full = 0 #다 읽었는지 여부
