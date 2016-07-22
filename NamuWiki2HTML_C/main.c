@@ -12,21 +12,20 @@ int JsonIO(){
 	char *cache;
 	if((cache = (char *)malloc(Csize)) == NULL) return 2;
 	//read near 50MB * (core - 1) (maybe 4000 documents?)
+	int document[500000];
+	int iv, a;
+	a = 0;
 	
-	for (int a = 0; (Csize - (&cache[a] - cache)) >10000; a++) 
-		cache[a] = getc(input); // EOF 도. feof(); 
-	
-	//forcores{
-	//	for(short w = 0; w<1000; w++){
-	//		for(int k = 0 ; cache[i][k-1] != '}' ; k++) {
-	//			cache[i][k] = getc(input);
-	//		}
-	//		//포인터 기록. 
-	//	}
-	//}
-	int a;
+	document[0] = &cache[0];
+	for (iv = 1; (Csize - (&cache[a] - cache)) >10000; iv++) {
+		while( (cache[a] = getc(input)) != '}' ) a++; // EOF 도. feof();
+		a++; 
+		document[iv] = &cache[a];
+	}
+	document[iv+1] = '\0';
 	//printf("%s\n",cache);
-	printf("%d",(&cache[5]-cache));
+	//printf("%d",(&cache[5]-cache));
+	printf("%d",iv);
 	scanf("%d",&a);
 	//send to pointer
 	//while all the pointer is not null : 
