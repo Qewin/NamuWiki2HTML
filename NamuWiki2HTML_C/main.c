@@ -2,34 +2,39 @@
 #include "stdnamu.h"
 
 #define CORE 3 //코어 수 - 1 
-#define Csize  50*1000*1000
-#define forcores for(short i = 0; i<CORE; i++) // 코어 수에 맞춰 호출 
+#define Csize  CORE*50*1000*1000
+//#define forcores for(short i = 0; i<CORE; i++) // 코어 수에 맞춰 호출 
 
 int JsonIO(){
+	//구조를 하나의 큰 malloc에서 나머지로 편성하는 방법 사용하기 
 	FILE *input;
 	if((input = fopen("namu.json","r")) == NULL) return 1;
-	char *cache[CORE];
-	forcores if((cache[i] = (char *)malloc(Csize)) == NULL) return 2;
+	char *cache;
+	if((cache = (char *)malloc(Csize)) == NULL) return 2;
 	//read near 50MB * (core - 1) (maybe 4000 documents?)
-	forcores printf("%d\n",cache[i]);
-	forcores{
-		for(short w = 0; w<1000; w++){
-			for(int k = 0 ; cache[i][k-1] != '}' ; k++) {
-				cache[i][k] = getc(input);
-			}
-			//포인터 기록. 
-		}
-	}
+	
+	for (int a = 0; (Csize - (&cache[a] - cache)) >10000; a++) 
+		cache[a] = getc(input); // EOF 도. feof(); 
+	
+	//forcores{
+	//	for(short w = 0; w<1000; w++){
+	//		for(int k = 0 ; cache[i][k-1] != '}' ; k++) {
+	//			cache[i][k] = getc(input);
+	//		}
+	//		//포인터 기록. 
+	//	}
+	//}
 	int a;
+	//printf("%s\n",cache);
+	printf("%d",(&cache[5]-cache));
 	scanf("%d",&a);
-	forcores printf("%s",cache[i]);
 	//send to pointer
 	//while all the pointer is not null : 
 	// until 40% of memory left
 	//  read near 50MB
 	//  find title, namespace, document
 	//start new parse thread
-	forcores free (cache[i]);
+	free (cache);
 	return 0;
 }
 
