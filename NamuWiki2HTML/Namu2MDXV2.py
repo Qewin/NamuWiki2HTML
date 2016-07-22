@@ -19,7 +19,7 @@ import codecs
 import time
 infile = open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r') #JSON 경로
 outfile = codecs.open("namu.txt", 'w', 'utf-8') #출력 파일 경로
-errfile = open("err.txt", 'w') #에러 파일 경로
+errfile = codecs.open("err.txt", 'w', 'utf-8') #에러 파일 경로
 count = -1 #라인 수(-1인 이유는 \r\n때문. 아래서 0으로 수정됨) 
 i = 0
 full = 0 #다 읽었는지 여부
@@ -333,7 +333,9 @@ def SqBracket(dir,read):
         linecache[dir].append("<a href=\"entry://")
         if line[read] == "/" and line[read+1] != "|": #앞에 제목 안붙
             linecache[dir].append(titlecache)
-        linecache[dir].append(codecs.decode(line[read:weed], 'unicode-escape').replace("\\",""))
+        try:linecache[dir].append(codecs.decode(line[read:weed], 'unicode-escape').replace("\\",""))
+        except:
+            errfile.write("인코딩 에러:%s(X)\r\n" %titlecache)
         linecache[dir].append("\">")
         read = WikiParser(dir,weed+1,"]]")
         linecache[dir].append("</a>")
@@ -345,9 +347,14 @@ def SqBracket(dir,read):
             if line[read+k+1:read+k+3] == "#s": j = k #표시되는 거에는 #s- 가 표시되면 안됨
             k = k + 1
         if j == 0: j = k # #s- 가 없을 수도.
-        if line[read] == "/" and line[read+1] != "]": # 앞에 제목 안붙
-            linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(titlecache,codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1]), 'unicode-escape').replace("\\",""))
-        else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1], 'unicode-escape').replace("\\","")))
+        try:
+            if line[read] == "/" and line[read+1] != "]": # 앞에 제목 안붙
+                linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(titlecache,codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1]), 'unicode-escape').replace("\\",""))
+            else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(codecs.decode(line[read:read+k+1], 'unicode-escape').replace("\\",""),codecs.decode(line[read:read+j+1], 'unicode-escape').replace("\\","")))
+        except:
+            errfile.write("인코딩 에러:%s(X)\r\n" %titlecache)
+            if line[read] == "/" and line[read+1] != "]": linecache[dir].append("<a href=\"entry://%s%s\">%s</a>" %(line[read:read+k+1],line[read:read+j+1]))
+            else: linecache[dir].append("<a href=\"entry://%s\">%s</a>" %(line[read:read+k+1],line[read:read+j+1]))
         #replace는 \'같은 거 처리
         read += k + 1
         while line[read-2:read] != "]]":
@@ -413,7 +420,8 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
     global listree
     while True:
         if read <= readtm: #무한루프 에러 기록.
-            errfile.writelines("무한루프 에러:%s?%s?%s\r\n" %(line[read-10:read], line[read], line[read+1:read+10]))
+            try : errfile.writelines("무한루프 에러:%s(%s?%s?%s)\r\n" %(titlecache, line[read-10:read], line[read], line[read+1:read+10]))
+            except : errfile.writelines("무한루프 에러:%s\r\n" %(titlecache))
             read = readtm + 1
         readtm = read
         #--------------------------
@@ -567,10 +575,12 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                     read += 2
                 elif end == "||" or TableOn == True: break # 표 안
                 elif end == "]": 
-                    errfile.write("주석 에러:%s(%s)\r\n" %(titlecache,line[read-10:read+1]))
+                    try : errfile.write("주석 에러:%s(%s)\r\n" %(titlecache,line[read-10:read+1]))
+                    except : errfile.write("주석 에러:%s(X)\r\n" %titlecache)
                     break #주석에 표가 없다는 가정 하에.
                 elif end == "]]": 
-                    errfile.write("링크 에러(링크 안의 표):%s(%s)\r\n" %(titlecache,line[read-10:read+1]))
+                    try : errfile.write("링크 에러(링크 안의 표):%s(%s)\r\n" %(titlecache,line[read-10:read+1]))
+                    except : errfile.write("링크 에러(링크 안의 표):%s(X)\r\n" %titlecache)
                     break #링크에 표가 없으니까.
                 elif end == "||":
                     break # 표 문법 안.
@@ -618,7 +628,8 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
         elif line[read] == "[":
             if line[read:read+2] == "[[":
                 if end == "]]":
-                    errfile.write("링크 에러(중복 링크):%s(%s)\r\n" %(titlecache,line[read-10:read+1]))
+                    try : errfile.write("링크 에러(중복 링크):%s(%s)\r\n" %(titlecache,line[read-10:read+1]))
+                    except : errfile.write("링크 에러(중복 링크):%s(X)\r\n" %(titlecache))
                     break
                 else: read = SqBracket(dir,read)#링크?
             #elif line[read] == '[':
