@@ -17,7 +17,7 @@
 
 import codecs
 import time
-infile = open("E:/programs/programming/NamuV2/namuwiki_20160530.json", 'r') #JSON 경로
+infile = open("E:/programs/programming/NamuV2/namuwiki_20160627.json", 'r') #JSON 경로
 outfile = codecs.open("namu.txt", 'w', 'utf-8') #출력 파일 경로
 errfile = codecs.open("err.txt", 'w', 'utf-8') #에러 파일 경로
 count = -1 #라인 수(-1인 이유는 \r\n때문. 아래서 0으로 수정됨) 
@@ -239,12 +239,14 @@ def newTableFunc(dir,read):
                                     read += 1         #건너뛰기
                                 read += 1             #> 뒤로
                     elif line[read:read+6] == "<align" or line[read:read+6] == "<bgcol" or line[read:read+6] == "<width":
-                        re = line.find('>',read+1)
+                        read += 1
+                        re = line.find('>',read)
                         linecache[4].append(" %s" %line[read:re])
                         read = re + 1
                     elif line[read:read+2] == "<#":
+                        read += 1
                         linecache[4].append(" bgcolor=")
-                        re = line.find('>',read+1)
+                        re = line.find('>',read)
                         linecache[4].append(line[read:re])
                         read = re + 1
                     else:                           #나머지는 일단 나중에
@@ -695,8 +697,6 @@ print("Reading Cache")
 
 line = infile.read(50000000)
 print("Converting...")
-#checkpoint = time.time() # 문서 속도 측정 지표 변수
-#DocNum = 0 # 문서 속도 측정 지표 변수
 while True:
     while (len(line) - read > 900000) or full == -1 :
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화

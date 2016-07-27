@@ -4,32 +4,64 @@
 #define CORE 3 //코어 수 - 1 
 #define Csize  CORE*50*1000*1000
 
-int ReadJSON(FILE *input){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의 포인터가 들어 있음.(2번째 로딩부터는 사용.)
+string ReadJSON(FILE *input){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의 포인터가 들어 있음.(2번째 로딩부터는 사용.)
 	char *cache;
-	int *document;
-	if( (cache = (char *)malloc(Csize)) == NULL) return NULL;
-	if( (document = (int *)malloc(sizeof(int)*500000)) == NULL) return NULL;
+	 *document;
+	if( (cache = (char *)malloc(Csize)) == NULL) return (string){0,0};
+	if( (document = (int *)malloc(sizeof(int)*500000)) == NULL) return (string){0,0};
 	int iv, a;
 	for (a = iv = 0; (Csize - a) >10000; iv++) {
 		document[iv] = &cache[a]; //{"n 에서 n이 반환됨. 
 		while( (cache[a++] = getc(input)) != '\"' ) while( (cache[a++] = getc(input)) != '{' ); // EOF 도. feof();
 	} // 마지막은 기록 안됨. 
-	document[iv+1] = '\0'; 
-	printf("%d,%d",iv,a); //for(a = 0; a < iv;a++)printf("%d,",document[a]);
-	return document;
+	string doc = {document,(iv-1)};
+	printf("%d,%d,%d\n",document,document[1],iv);
+	return doc;
+}
+
+int *worker(string doc){
+	printf("\n%d,%d\n",doc.p,doc.p[1]);
+	int full, i;
+	printf("%d",doc.len);
+	int *Cdoc; //변환 데이터의 포인터 저장 
+	if( (Cdoc = (int *)malloc(sizeof(int) * full)) == NULL) return NULL;
+	full--;
+	#pragma omp parallel for
+	for (i=0; i < full; i++) {//namespace = (char)-48, 
+			char *temp = doc.p[i];
+			if(temp[0] != 'n')continue;
+			int read = 24;
+			while( temp[read++] != '\"' ) while( temp[read++] != ',' );
+			string title = {&temp[24] , ((read-4)-24)};
+			int read2 = doc.p[i+1] - doc.p[i];
+			while( temp[read2--] != '[' )( temp[read2--] != '\"' );
+			string text ={&temp[read+7] , ((read2-17) - (read+7))};
+			
+			int end = parse((int)(temp[12]-48),title,text,Cdoc[i]);
+			//printf("(%c,%d,%c%c,%c)",temp[0],(temp[12]-48),temp[24],temp[25],temp[read+7]);
+			//parse((int)(temp[12]-48),&temp[24],&temp[read+7],Cdoc[i]);//namespace,title,text,cdocpointer
+			
+			
+			for (read = 0; read < title.len ;read++)printf("%c",temp[24+read]);
+			printf("\n");
+			char* ttl = title.p;
+			for (read = 0; read < title.len ;read++)printf("%c",ttl[read]);
+			if(&temp[24] != &title.p[0]) printf("aaa\n");
+			printf("\n");
+		}
+	return Cdoc;
 }
 
 
 int JsonIO(){
-	//구조를 하나의 큰 malloc에서 나머지로 편성하는 방법 사용하기 
 	FILE *input;
 	if((input = fopen("namu.json","r")) == NULL) return 1;
-	int *dptr;
-	if( (dptr = ReadJSON(input) ) == NULL) return 2;
-	dptr = worker(dptr);
-	
-	//워커 쓰레드 만들기 
-	free (dptr[0]);
+	string doc;
+	int *cptr;
+	doc = ReadJSON(input);
+	if( (cptr = worker(doc)) == NULL) return 3;
+	free (doc.p[0]);
+	free (cptr);
 	
 	//send to pointer
 	//while all the pointer is not null : 
@@ -38,16 +70,6 @@ int JsonIO(){
 	//  find title, namespace, document
 	//start new parse thread
 	return 0;
-}
-
-int worker(int *doc){
-	int *Cdoc;
-	if( (Cdoc = (int *)malloc(sizeof(int)*500000)) == NULL) return NULL;
-	int a, i;
-	for (a=0; doc[a] == '/0'; a++);
-	#pragma omp parallel for
-	for (i=0; i < a; i++) Cdoc[i] = doc[i];
-	return Cdoc;
 }
 
 int main(){

@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 #---------주의사항----------
 #파일 경로가 변환을 위해서만 만들어서 직접 소스에서 수정해야 사용 가능합니다.
 #현재 버전의 (11월 2일, 11월 30일 나무위키) 정도만 작동 보증합니다.
@@ -696,6 +697,8 @@ print("Reading Cache")
 
 line = infile.read(50000000)
 print("Converting...")
+#checkpoint = time.time() # 문서 속도 측정 지표 변수
+#DocNum = 0 # 문서 속도 측정 지표 변수
 while True:
     while (len(line) - read > 900000) or full == -1 :
         index = [0,0,0,0,0,0,0,0,0,0,0] # 목차 초기화
@@ -706,7 +709,7 @@ while True:
             if full == -1: read = len(line) - 1
             else: break 
         if line[read] == "1": titlecache.append("틀:")
-        elif line[read] == "2" or line[read] == "3" or line[read] == "4": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
+        elif line[read] == "2" or line[read] == "3": # 사실 3은 이미지. 그러나 날리기 위해 그냥.
             titlecache.append("분류:")
             isTemplate = True
         elif line[read] == "6": titlecache.append("나무위키:")

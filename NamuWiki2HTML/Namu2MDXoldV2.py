@@ -48,7 +48,10 @@ def TripleBrace(dir,read):
     global linecache
     if line[read+3:read+9].lower() == "#!html":    #html 스킵 신공
         read +=9
-        if titlecache[:2] != "틀:": read = line.find("}}}", read) + 3
+        if titlecache[:2] != "틀:":
+            while line [read:read+3] != "}}}":
+                read += 1
+            read += 3
         else:
             while line [read:read+3] != "}}}":
                 if line[read] == "\"":
@@ -60,14 +63,20 @@ def TripleBrace(dir,read):
             read += 3
     elif line [read+3] == '#':              # 색
         read += 4
-        i = line.find(" ", read + 1)
-        linecache[dir].append("<font color=\"%s>" % line[read:i])         
-        read = WikiParser(dir,i + 1,"}}}")#i+1 인 건 빈칸 건너뛰기 위해
+        linecache[dir].append("<font color=\"")
+        while line[read] != ' ':
+            linecache[dir].append(line[read])
+            read += 1
+        linecache[dir].append("\">")
+        read += 1                     #빈칸 건너뛰기
+        read = WikiParser(dir,read,"}}}")
         linecache[dir].append("</font>")
         read += 3
     elif line[read+3] == "+":
-        linecache[dir].append("<font size=\"%s\">"%line[read+3:read+5])
-        read = WikiParser(dir,read+5,"}}}")
+        read += 3
+        linecache[dir].append("<font size=\"%s\">"%line[read:read+2])
+        read += 2
+        read = WikiParser(dir,read,"}}}")
         if line[read] == "}" : read += 3
         linecache[dir].append("</font>")
     else:                                   #문법 무시
@@ -296,10 +305,17 @@ def indexFunc (dir,read,index):
         i = i + 1
     indlist = "".join(linecache[3])
     linecache[3] = list()
-    linecache[dir].append("<a name=\"s-%s\"><font color=\"blue\" size=\"5\">%s</font></a>" %(indlist[:-1], indlist))
-    linecache[2].append("%s<a href=\"entry://#s-%s\">%s</a>" %(("&nbsp"*where),(indlist[:-1]) , indlist))#   1.2.3.
+    linecache[dir].append("<a name=\"s-%s\"><font color=\"blue\" size=\"5\">" %(indlist[:-1]))
+    linecache[2].append("%s<a href=\"entry://#s-%s\">" %(("&nbsp"*where),(indlist[:-1])))#   1.2.3.
+    linecache[dir].append(indlist)
+    linecache[2].append(indlist)
+    linecache[dir].append("</font></a>")
+    linecache[2].append("</a>")
     read = WikiParser(3,read," =")
-    if line[read:read+2] == " =": read = line.find("=",read+1) #read + 1 이 되어야 하는 부분
+    if line[read:read+2] == " =": 
+        read += 1
+        while line[read] == "=":
+            read += 1
     linecache[dir].append("".join(linecache[3]))
     linecache[2].append("".join(linecache[3]))
     linecache[3] = list()
@@ -420,69 +436,10 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
     readtm = -1
     global listree
     while True:
-        if read <= readtm: #무한루프 에러 기록.
-            try : errfile.writelines("무한루프 에러:%s(%s?%s?%s)\r\n" %(titlecache, line[read-10:read], line[read], line[read+1:read+10]))
-            except : errfile.writelines("무한루프 에러:%s\r\n" %(titlecache))
-            read = readtm + 1
+        if read == readtm: #무한루프 에러 기록.
+            errfile.writelines("무한루프 에러:%s?%s?%s\r\n" %(line[read-10:read], line[read], line[read+1:read+10]))
+            read += 1
         readtm = read
-        #--------------------------
-        # 문법 스킵 시에도 들어가야 하는 sql문법(?)
-        #--------------------------
-        #\ 관련
-        if line[read] == '\\':
-            if line[read+1] == 'u': #\uXXXX\uXXXX
-                reed = read
-                while line[reed:reed+2] == "\\u":
-                    reed += 6                         # 마지막엔 reed자체는 u밖의 범위.
-                linecache[dir].append(codecs.decode(line[read:reed], 'unicode-escape'))
-                read = reed - 2
-            elif line[read:read+6] == "\\\'\\\'\\\'": # \'\'\' -> \'에 앞서게.
-                if strong :
-                    linecache[dir].append("<b>")
-                    strong = False
-                else:
-                    linecache[dir].append("</b>")
-                    strong = True
-                read += 4#뒤에서 +2
-            elif line[read+1] == 'n':
-                linecache[dir].append("<br>") # \n
-                contentLine = contentLine + 1 # 표를 위해 카운트
-                if not strong:
-                    linecache[dir].append("</b>")
-                    strong = True
-                if not cancelline:
-                    linecache[dir].append("</s></font>")
-                    cancelline = True
-                if not underline:
-                    linecache[dir].append("</u>")
-                    underline = True
-                if not down:
-                    linecache[dir].append("</sub>")
-                    down = True
-                if not up:
-                    linecache[dir].append("</sup>")
-                    up = True
-                if len(end)>=2 and end[1] == "=": break  #목차 처리
-                elif end == "||" and line[read+2:read+4] == "||":
-                    read += 2
-                    break #
-                elif end == "\\n":
-                    read += 2
-                    break # ">" 형 상자 처리
-                #여기에 다중줄과 일반 다음 표 구분 알고리즘
-            elif line[read+1] == '\\':   # \\
-                linecache[dir].append("\\")
-            elif line[read+1] == '\'':   # \'
-                linecache[dir].append("\'")
-            elif line[read+1] == '\"':   # \"
-                linecache[dir].append("\"")
-            elif line[read:read+4] == "\\n##": #주석 (\n##)
-                read += 2
-                while line[read:read+2] != "\\n" and line[read:read+2] != "\",":
-                    read += 1
-                #\n까지 옴
-                read -= 2
-            read += 2
         #-------------------------------
         #기본 마크업
         #-------------------------------
@@ -496,7 +453,7 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
         #        italic = True
         #    read += 4
         #
-        elif line[read:read+4] == "[목차]":
+        if line[read:read+4] == "[목차]":
             linecache[0].append("TestTest") #목차로 덮어씨워질 부분
             listree = len(linecache[0]) - 1 # 0부터 시작
             if listree == -1:
@@ -614,6 +571,61 @@ def WikiParser(dir,read,end): #linecache 위치 / read / 종결 문자열(Null �
                 read += 1
                 read = WikiParser(dir,read,"\\n")
             linecache[dir].append("</td></table>") # 표끝마치기
+        #--------------------------
+        # 문법 스킵 시에도 들어가야 하는 sql문법(?)
+        #--------------------------
+        #\ 관련
+        elif line[read] == '\\':
+            if line[read:read+6] == "\\\'\\\'\\\'": # \'\'\' -> \'에 앞서게.
+                if strong :
+                    linecache[dir].append("<b>")
+                    strong = False
+                else:
+                    linecache[dir].append("</b>")
+                    strong = True
+                read += 4#뒤에서 +2
+            elif line[read+1] == 'n':
+                linecache[dir].append("<br>") # \n
+                contentLine = contentLine + 1 # 표를 위해 카운트
+                if not strong:
+                    linecache[dir].append("</b>")
+                    strong = True
+                if not cancelline:
+                    linecache[dir].append("</s></font>")
+                    cancelline = True
+                if not underline:
+                    linecache[dir].append("</u>")
+                    underline = True
+                if not down:
+                    linecache[dir].append("</sub>")
+                    down = True
+                if not up:
+                    linecache[dir].append("</sup>")
+                    up = True
+                if len(end)>=2 and end[1] == "=": break  #목차 처리
+                elif end == "||" and line[read+2:read+4] == "||":
+                    read += 2
+                    break #
+                elif end == "\\n":
+                    read += 2
+                    break # ">" 형 상자 처리
+                #여기에 다중줄과 일반 다음 표 구분 알고리즘
+                #
+                #
+            elif line[read+1] == '\\':   # \\
+                linecache[dir].append("\\")
+            elif line[read+1] == '\'':   # \'
+                linecache[dir].append("\'")
+            elif line[read+1] == '\"':   # \"
+                linecache[dir].append("\"")
+            elif line[read:read+4] == "\\n##": #주석 (\n##)
+                read += 2
+                while line[read:read+2] != "\\n" and line[read:read+2] != "\')":
+                    read += 1
+                #\n까지 옴
+                read -= 2
+            read += 2
+        ###############################3
         elif line[read] == "/": #이미지 스킵.
             a = True
             for i in range(50):
@@ -727,7 +739,7 @@ while True:
             #------------(<hr>)
             
         #----------------------------------------
-        #|문법 해석부     |
+        #|문법 해석부 (func화 해서 제목에도/재귀)     |
         #----------------------------------------
         if line[read:read+9] == "#redirect": #리다이렉트
             linecache[0].append("<a href=\"entry://")
