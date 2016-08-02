@@ -1,10 +1,18 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #define CORE 4
 #define Csize  CORE*50*1000*1000
 
-typedef struct sstring{
-	int *p; //string 자체. 
+typedef struct typicalstring{
+	unsigned char *p; //string 자체. 
 	int len; //길이.(0부터 세었다.) 
 }string;
+typedef struct pointerstring{
+	unsigned char **p; //string 자체. 
+	int len; //길이.(0부터 세었다.) 
+}pstring;
+
 short u2utf8(unsigned char *u, unsigned char* output){
 	unsigned int i , ch = 0;
 	for(i=0;i<=3;i++) {
@@ -38,7 +46,6 @@ short parse(int Nspace, string title, string text, unsigned char* opt){
 	unsigned char* txt = (char*)text.p;
 	unsigned char* ttl = (char*)title.p;
 	unsigned char* output = opt;
-	
 	// namespace -> title
 	index2 = 0; //output index
 	for(index=0;index<=title.len;index++){//input index
@@ -52,8 +59,8 @@ short parse(int Nspace, string title, string text, unsigned char* opt){
 		else output[index2] = ttl[index];
 		index2++;
 	}
-	//for (index=0;index<=index2;index++)printf("%c",(unsigned char)output[index]);
-	//printf("\n");
+	for (index=0;index<=index2;index++)printf("%c",(unsigned char)output[index]);
+	printf("\n");
 	//char *ctitle = u2utf8(title);
 	//char *ctext = parsetext(text);
 	return index2; // 작성한 위치 다음을 반환한다. 
