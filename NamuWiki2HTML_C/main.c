@@ -26,13 +26,14 @@ pstring ReadJSON(FILE *input){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의
 	return (pstring){document,(iv-1)};
 }
 
-int worker(pstring doc){
+int worker(pstring doc, FILE *outfile){
 	printf("\n%d,%d\n",doc.p,doc.p[1]);
 	int full = doc.len, i;
 	printf("%d\n",doc.len);
 	unsigned char *Cdoc[4]; //변환 데이터 저장 
-	for (i=0; i < CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc((int)(Csize*0.3)) ) == NULL) return 1;
+	for (i=0; i < CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc((int)(Csize*0.4)) ) == NULL) return 1;
 	int CDIndex = 0;
+	unsigned char *endpoint[4];
 	unsigned char *temp;
 	#pragma omp parallel for private(temp, CDIndex)
 	for (i=0; i <= full; i++) {//namespace = (char)-48,    ThreadNum
@@ -45,40 +46,43 @@ int worker(pstring doc){
 		while( temp[read2--] != '[' ) while( temp[read2--] != '\"' );
 		string text = (string) {&temp[read+7] , ((read2-17) - (read+7))};
 		CDIndex += parse((int)(temp[12]-48),title,text,Cdoc[ThreadNum] + CDIndex);
-		//printf("(%c,%d,%c%c,%c)",temp[0],(temp[12]-48),temp[24],temp[25],temp[read+7]);
-		
-		//for (read = 0; read < title.len ;read++)printf("%c",temp[24+read]);
-		//printf("\n");
-		//unsigned char* ttl = title.p;
-		//for (read = 0; read < title.len ;read++)printf("%c",ttl[read]);
-		//printf("\n");
+		endpoint[ThreadNum] = Cdoc[ThreadNum] + CDIndex;
 	}
 	
-	for (i=0; i < CORE; i++) free(Cdoc[i]);
+	for (i=0; i < CORE; i++) {
+		int j, lim;
+		lim = endpoint[i] - Cdoc[i];
+		for(j=0;j < lim; j++)putc(Cdoc[i][j], outfile);
+		free(Cdoc[i]);
+	}
 	return 0;
 }
 
 
 int JsonIO(){
 	FILE *input;
+	FILE *outfile;
 	pstring doc;
 	int output;
 	
 	if((input = fopen("namu.json","r")) == NULL) return 1;
-	doc = ReadJSON(input);
-	while( *(*(doc.p+doc.len+1)-1) != EOF){
-		printf("%c",*(*(doc.p+doc.len+1)-1));
-		if ((output = worker(doc)) != 0) return 2;
+	if((outfile = fopen("Cnamu.txt","w")) == NULL) return 3;
+	do{
+		doc = ReadJSON(input);
+		//printf("%c",*(*(doc.p+doc.len+1)-1));
+		if ((output = worker(doc,outfile)) != 0) return 2;
 		free (*doc.p);
 		free (doc.p);
-		doc = ReadJSON(input);
-	}
+	}while( *(*(doc.p+doc.len+1)-1) != EOF);
+	fclose(input);
+	fclose(outfile);
 	return 0;
 }
 
 int main(){
 	int IOret = JsonIO();
-	if (IOret == 1) printf("덤프 파일이 없거나 손상되었습니다.");
+	if (IOret == 1) printf("덤프 파일을 열 수 없습니다.");
 	if (IOret == 2) printf("변환용 캐시 메모리가 부족합니다.");
+	if (IOret == 3) printf("출력 파일을 열 수 없습니다.");
 	return IOret;
 }
