@@ -59,8 +59,25 @@ short parse(int Nspace, string title, string text, unsigned char* opt){
 		else output[index2] = ttl[index];
 		index2++;
 	}
-	for (index=0;index<=index2;index++)printf("%c",(unsigned char)output[index]);
-	printf("\n");
+	for (index=0;index<=text.len;index++){
+		switch(txt[index]){
+			case '\\':{
+				switch(txt[++index]){ // txt : \uXXXX 에서 u  
+					case 't': output[index2++] = '\t'; break;
+					case 'n': output[index2++] = '\r'; output[index2++] = '\n'; break;
+					case 'u': index2 += u2utf8(txt+index+1,output+index2); index += 4; break;//
+					default: output[index2++] = txt[index]; break;
+					}
+				break;
+			}
+			//case '[':break;
+			//case '~':break;
+			//case '-':break;
+			default: output[index2++] = txt[index]; break;
+		}
+	}
+	//for (index=0;index<=index2;index++)printf("%c",(unsigned char)output[index]);
+	//printf("\n");
 	//char *ctitle = u2utf8(title);
 	//char *ctext = parsetext(text);
 	return index2; // 작성한 위치 다음을 반환한다. 
