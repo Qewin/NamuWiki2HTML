@@ -2,7 +2,7 @@
 #define free_heap (*next - next -(int)(*(next+1) * 1.1))
 #define heap_size_left heap + hsize - next
 
-halloc(void *heap, int s){
+void* halloc(void *heap, int s){
 	void *next = *heap;
 	int hsize= *(heap-1), size = s+2;
 	for(;heap_size_left>0;next=*next){
@@ -30,4 +30,7 @@ halloc(void *heap, int s){
 		return(++alloc);
 	}
 	return NULL;
+}
+hfree(void *heap, void *alloc){
+	
 }
