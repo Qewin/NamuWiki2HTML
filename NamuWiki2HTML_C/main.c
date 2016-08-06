@@ -7,9 +7,10 @@ pstring ReadJSON(FILE *input){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의
 	unsigned char *cache;
 	unsigned char **document;
 	if( (cache = (unsigned char *)malloc(Csize)) == NULL) return (pstring){0,0};
-	if( (document = (unsigned char **)malloc(500000)) == NULL) return (pstring){0,0};
+	if( (document = (unsigned char **)malloc(10000)) == NULL) return (pstring){0,0};
 	int iv, a;
-	for (a = iv = 0; (Csize - 1000000) >a; iv++) { //realloc과 기타 등등을 이용하여 에러 처리. 
+	int size1 = Csize;
+	for (a = iv = 0; iv < 10000; iv++) { //realloc과 기타 등등을 이용하여 에러 처리. 
 		*(document+iv) = &cache[a]; //{"n 에서 n이 반환됨. 
 		while( (cache[a++] = getc(input)) != '\"' ){
 			while( (cache[a] = getc(input)) != '{' ){
@@ -19,32 +20,37 @@ pstring ReadJSON(FILE *input){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의
 					} // EOF 도. feof();
 			}
 		} 
+		if (a >= (size1 - 1000000)){
+			size1 += 10000000;
+			realloc(cache,size1);
+		}
 	} // 마지막은 기록 안됨.
 	*(document+iv) = &cache[a];
 	cache = realloc(cache,a);
-	printf("%d,%d,%d\n",document,*(document+1),iv);
+	printf("%d,%d,%d,%c\n",document,*(document+1),iv,cache[a-1]);
 	return (pstring){document,(iv-1)};
 }
 
 int worker(pstring doc, FILE *outfile){
-	printf("\n%d,%d\n",doc.p,doc.p[1]);
 	int full = doc.len, i;
 	printf("%d\n",doc.len);
-	unsigned char *Cdoc[4]; //변환 데이터 저장 
+	unsigned char *Cdoc[CORE]; //변환 데이터 저장 
 	for (i=0; i < CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc((int)(Csize*0.4)) ) == NULL) return 1;
 	int CDIndex = 0;
-	unsigned char *endpoint[4];
+	unsigned char *endpoint[CORE];
 	unsigned char *temp;
-	#pragma omp parallel for private(temp, CDIndex)
+	string title, text;
+	int read, read2;
+	#pragma omp parallel for private(temp, CDIndex, title, text, read, read2)
 	for (i=0; i <= full; i++) {//namespace = (char)-48,    ThreadNum
 		temp = *(doc.p+i);
 		if(temp[0] != 'n')continue;
-		int read = 24;
+		read = 24;
 		while( temp[read++] != '\"' ) while( temp[read++] != ',' );
-		string title = {&temp[24] , ((read-4)-24)};
-		int read2 = doc.p[i+1] - doc.p[i];
+		title = (string) {&temp[24] , ((read-4)-24)};
+		read2 = doc.p[i+1] - doc.p[i];
 		while( temp[read2--] != '[' ) while( temp[read2--] != '\"' );
-		string text = (string) {&temp[read+7] , ((read2-17) - (read+7))};
+		text = (string) {&temp[read+7] , ((read2-17) - (read+7))};
 		CDIndex += parse((int)(temp[12]-48),title,text,Cdoc[ThreadNum] + CDIndex);
 		endpoint[ThreadNum] = Cdoc[ThreadNum] + CDIndex;
 	}

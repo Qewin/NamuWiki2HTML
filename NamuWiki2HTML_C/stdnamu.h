@@ -41,7 +41,7 @@ short u2utf8(unsigned char *u, unsigned char* output){
 }
 //int parsetable(string text);
 //int parsetext(string text);
-short parse(int Nspace, string title, string text, unsigned char* opt){
+int parse(int Nspace, string title, string text, unsigned char* opt){
 	int index,index2;
 	unsigned char* txt = (char*)text.p;
 	unsigned char* ttl = (char*)title.p;
