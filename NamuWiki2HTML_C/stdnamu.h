@@ -48,7 +48,10 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	unsigned char* output = opt;
 	// namespace -> title
 	index2 = 0; //output index
-	for(index=0;index<=title.len;index++){//input index
+	index =0 //input index
+	int i;
+	while(ttl[index++] == ' '); // 力格 菊狼 后沫 贸府 
+	while(index<=title.len){//input index
 		if(ttl[index] == '\\'){
 			switch(ttl[++index]){ // ttl : \uXXXX 俊辑 u  
 				case 't': output[index2] = '\t'; break;
@@ -58,6 +61,7 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 		}
 		else output[index2] = ttl[index];
 		index2++;
+		index++;
 	}
 	for (index=0;index<=text.len;index++){
 		switch(txt[index]){
@@ -70,7 +74,25 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 					}
 				break;
 			}
-			//case '[':break;
+			//case '[':{
+			//	switch(txt[++index]){
+			//		int bar = -1;
+			//		int end = -1;
+			//		case '[':{
+			//			
+			//			for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++){
+			//				if(txt[i] == ']' && txt[i+1 == ']']){
+			//					end = i;
+			//					break;
+			//				}
+			//				else if(txt[i] == '|' && bar == -1) bar = i;
+			//			}
+			//			break;
+			//		}
+			//		default: output[index2++] = txt[--index]; break;
+			//	}
+			//	break;
+			//}
 			//case '~':break;
 			//case '-':break;
 			default: output[index2++] = txt[index]; break;
