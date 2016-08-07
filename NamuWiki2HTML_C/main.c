@@ -25,7 +25,7 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~
 
 
 int worker(pstring doc, FILE *outfile){
-	printf("Starting Worker\r");
+	printf("Converting\r");
 	int full = doc.len, i;
 	unsigned char *Cdoc[CORE]; //변환 데이터 저장 
 	for (i=0; i < CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc((int)(Csize*0.4)) ) == NULL) return 1;
@@ -35,7 +35,6 @@ int worker(pstring doc, FILE *outfile){
 	string title, text;
 	int read, read2;
 	int st = 1;
-	printf("                 \r");
 	#pragma omp parallel for private(temp, CDIndex, title, text, read, read2)
 	for (i=0; i <= full; i++) {//namespace = (char)-48,    ThreadNum
 		temp = *(doc.p+i);
@@ -46,15 +45,17 @@ int worker(pstring doc, FILE *outfile){
 		read2 = doc.p[i+1] - doc.p[i];
 		while( temp[read2--] != '[' ) while( temp[read2--] != '\"' );
 		text = (string) {&temp[read+7] , ((read2-17) - (read+7))};
-		CDIndex += parse((int)(temp[12]-48),title,text,Cdoc[ThreadNum] + CDIndex);
+		CDIndex += parse((int)(temp[12]-48),title,text,&Cdoc[ThreadNum][CDIndex]);
 		endpoint[ThreadNum] = Cdoc[ThreadNum] + CDIndex;
-		printf("[%d/%d]\r",st++,(full+1));
+		//printf("[%d/%d]\r",st++,(full+1));
 	}
 	for (i=0; i < CORE; i++) {
-		printf("Writing(%d/%d)\r",(i+1),CORE);
-		int j, lim;
+		printf("Writing(%d/%d)[%c%c]           \r",(i+1),CORE,Cdoc[i][3],Cdoc[i][4]);
+		int j= 0, lim;
 		lim = endpoint[i] - Cdoc[i];
-		for(j=0;j < lim; j++)putc(Cdoc[i][j], outfile);
+		if(Cdoc[i][0] == '\0')j++;
+		
+		for(;j < lim; j++)putc(Cdoc[i][j], outfile);
 		free(Cdoc[i]);
 	}
 	return 0;

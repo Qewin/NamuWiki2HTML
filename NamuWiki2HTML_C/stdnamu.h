@@ -3,6 +3,8 @@
 
 #define CORE 4
 #define Csize  CORE*50*1000*1000
+#define parsetitle(a,b,c) { if(a[b] == '\\'){ switch(a[++b]){ case 't': output[c] = '\t'; break; case 'u': c += u2utf8(a+b+1,output+c) - 1; b += 4; break; default: output[c] = a[b]; break;}} else output[c] = a[b]; c++; b++; }
+#define Plain output[index2++] = txt[index]; break;
 
 typedef struct typicalstring{
 	unsigned char *p; //string 자체. 
@@ -40,67 +42,74 @@ short u2utf8(unsigned char *u, unsigned char* output){
 	
 }
 //int parsetable(string text);
-//int parsetext(string text);
-int parse(int Nspace, string title, string text, unsigned char* opt){
-	int index,index2;
+int parsetext(string text, unsigned char* output, int index2v){
+	int index2 = index2v, index, i;
 	unsigned char* txt = (char*)text.p;
-	unsigned char* ttl = (char*)title.p;
-	unsigned char* output = opt;
-	// namespace -> title
-	index2 = 0; //output index
-	index =0 //input index
-	int i;
-	while(ttl[index++] == ' '); // 제목 앞의 빈칸 처리 
-	while(index<=title.len){//input index
-		if(ttl[index] == '\\'){
-			switch(ttl[++index]){ // ttl : \uXXXX 에서 u  
-				case 't': output[index2] = '\t'; break;
-				case 'u': index2 += u2utf8(ttl+index+1,output+index2) - 1; index += 4; break;//
-				default: output[index2] = ttl[index]; break;
-			}
-		}
-		else output[index2] = ttl[index];
-		index2++;
-		index++;
-	}
 	for (index=0;index<=text.len;index++){
 		switch(txt[index]){
 			case '\\':{
 				switch(txt[++index]){ // txt : \uXXXX 에서 u  
 					case 't': output[index2++] = '\t'; break;
-					case 'n': output[index2++] = '\r'; output[index2++] = '\n'; break;
+					case 'n': output[index2++] = '\n'; break;
 					case 'u': index2 += u2utf8(txt+index+1,output+index2); index += 4; break;//
-					default: output[index2++] = txt[index]; break;
+					default: Plain
 					}
 				break;
 			}
-			//case '[':{
-			//	switch(txt[++index]){
-			//		int bar = -1;
-			//		int end = -1;
-			//		case '[':{
-			//			
-			//			for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++){
-			//				if(txt[i] == ']' && txt[i+1 == ']']){
-			//					end = i;
-			//					break;
-			//				}
-			//				else if(txt[i] == '|' && bar == -1) bar = i;
-			//			}
-			//			break;
-			//		}
-			//		default: output[index2++] = txt[--index]; break;
-			//	}
-			//	break;
-			//}
+			case '[':{
+				switch(txt[index+1]){
+					case '[':{
+						index +=2;
+						int bar = -1;
+						int end = -1;
+						
+						for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++){
+							if(txt[i] == ']' && txt[i+1 == ']']){
+								end = i;
+								break;
+							}
+							else if(txt[i] == '|' && bar == -1) bar = i;
+						}
+						if(end != -1){
+							if (bar != -1){
+								strncpy(output+index2,"<a href=\"entry://",17);
+								index2 = parsetext((string){txt+index,bar-index-1},output,index2+17);
+								strncpy(output+index2,"\">",2);
+								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2+2);
+								strncpy(output+index2,"</a>",4);
+								index2 += 4;
+								index = end + 1;
+							}
+							else{
+								
+							}
+							break;
+						}
+						//else; //default로 
+					}
+					default: Plain
+				}
+				break;
+			}
 			//case '~':break;
 			//case '-':break;
-			default: output[index2++] = txt[index]; break;
+			default: Plain
 		}
 	}
-	//for (index=0;index<=index2;index++)printf("%c",(unsigned char)output[index]);
-	//printf("\n");
-	//char *ctitle = u2utf8(title);
-	//char *ctext = parsetext(text);
-	return index2; // 작성한 위치 다음을 반환한다. 
+	return (index2);
+}
+int parse(int Nspace, string title, string text, unsigned char* opt){
+	int index,index2;
+	unsigned char* ttl = (char*)title.p;
+	unsigned char* output = opt;
+	// namespace -> title
+	index2 = 0; //output index
+	index =0; //input index
+	int i;
+	while(index<=title.len) parsetitle(ttl,index,index2)
+	output[index2++] ='\n';
+	index2 = parsetext(text,opt,index2);
+	strncpy(opt+index2,"\n</>\n",5);
+	printf("%c%c%c\n",opt[1],opt[2],opt[3]);
+	return index2+5; // 작성한 위치 다음을 반환한다. 
 }
