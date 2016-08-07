@@ -23,16 +23,29 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~
 	return (--iv);
 }
 
+#define title (string) {&temp[24] , ((ttlend-4)-24)}
+#define text (string) {&temp[ttlend+7] , ((txtend-17) - (ttlend+7))}
 void *workthread(void *input){ //실제로는 cstring받게 함. 
 	cstring io = (cstring)input;
-	int i,Tnum = pthread_self();
+	int i,ttlend,txtend,index = 0,Tnum = pthread_self();
+	unsigned char *document;
+	unsigned char *Cdoc = io.Cdoc[Tnum];
 	for(i=Tnum;i<=io.Ilen;i+=CORE){
-		
+		document = (io.Ip+i);
+		if(document[0] != 'n')continue;
+		ttlend = 24;
+		while(document[ttlend++] != '\"') while(document[ttlend++] != ',');
+		txtend = io.Ip[i+1] - io.Ip[i];
+		while( document[txtend--] != '[' ) while( document[txtend--] != '\"' );
+		index += parse((int)(document[12]-48),title,text, Cdoc + index);
 	}
 	//CORE*i+pthread_self() 번째 문서만 처리한다.
 	//i/o 포인터 받는다.
 	//끝포인터 반환. 
+	return (void *)index;
 }
+#undef title
+#undef text
 int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	int i;
 	printf("\n");
