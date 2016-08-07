@@ -14,6 +14,11 @@ typedef struct pointerstring{
 	unsigned char **p; //string 자체. 
 	int len; //길이.(0부터 세었다.) 
 }pstring;
+typedef struct combinediostring{
+	unsigned char *Cdoc[]; //자기 쓰레드 번호에 집어넣으면 끝! 
+	unsigned char **Ip; // 입력 포인터 
+	int Ilen; //길이.(0부터 세었다.) 
+}cstring;
 
 short u2utf8(unsigned char *u, unsigned char* output){
 	unsigned int i , ch = 0;
