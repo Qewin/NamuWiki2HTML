@@ -20,39 +20,57 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~
 		} 
 	} // 마지막은 기록 안됨.
 	*(document+iv) = &cache[a];
+	printf("%d",iv);
 	return (--iv);
 }
 
-#define title (string) {&temp[24] , ((ttlend-4)-24)}
-#define text (string) {&temp[ttlend+7] , ((txtend-17) - (ttlend+7))}
+#define title (string) {&document[24] , ((ttlend-4)-24)}
+#define text (string) {&document[ttlend+7] , ((txtend-17) - (ttlend+7))}
 void *workthread(void *input){ //실제로는 cstring받게 함. 
-	cstring io = (cstring)input;
+	cstring *io = (cstring*)input;
+	//printf("[Main]%d,%d,%d,%d\n",io->Cdoc[0],io->Cdoc[1],io->Cdoc[2],io->Cdoc[3]);
 	int i,ttlend,txtend,index = 0,Tnum = pthread_self();
+	printf("[Thread:%d](%d/%d)\n",Tnum,io->Cdoc,io->Ip);
+	Tnum = Tnum % CORE;
 	unsigned char *document;
-	unsigned char *Cdoc = io.Cdoc[Tnum];
-	for(i=Tnum;i<=io.Ilen;i+=CORE){
-		document = (io.Ip+i);
+	unsigned char *Cdoc = io->Cdoc[Tnum];
+	//unsigned char *Cdoc = (unsigned char *)malloc(Csize);
+	for(i=Tnum;i<=io->Ilen;i+=CORE){
+		document = (io->Ip[i]);
 		if(document[0] != 'n')continue;
 		ttlend = 24;
 		while(document[ttlend++] != '\"') while(document[ttlend++] != ',');
-		txtend = io.Ip[i+1] - io.Ip[i];
+		txtend = io->Ip[i+1] - io->Ip[i];
 		while( document[txtend--] != '[' ) while( document[txtend--] != '\"' );
 		index += parse((int)(document[12]-48),title,text, Cdoc + index);
 	}
+	//free(Cdoc);
 	//CORE*i+pthread_self() 번째 문서만 처리한다.
 	//i/o 포인터 받는다.
 	//끝포인터 반환. 
-	return (void *)index;
+	io->Olen[Tnum] = index;
+	return (void *)Tnum;
 }
 #undef title
 #undef text
 int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
-	int i;
+	int i,j,outlen;
 	printf("\n");
-	for(i=0;i<CORE;i++) printf("%d,",Cdocv[i]);
+	//for(i=0;i<CORE;i++) printf("%d,",Cdocv[i]);
 	printf("\n");
 	printf("Converting\r");
-	for(i=0;i<CORE;i++) pthread_create(&threads[i], NULL, &workthread, (void *)(cstring){Cdocv,doc.p,doc.len});
+	cstring args;
+	for(i=0;i<CORE;i++) args.Cdoc[i] = Cdocv[i];
+	args.Ilen = doc.len;
+	args.Ip = doc.p;
+	//printf("[Worker1](%d/%d)\n",Cdocv,doc.p);
+	//printf("[Worker2](%d/%d)\n",args.Cdoc,args.Ip);z
+	for(i=0;i<CORE;i++) pthread_create(&threads[i], NULL, &workthread, &args);
+	printf("\n");
+	for(i=0;i<CORE;i++) {
+		pthread_join(threads[i],(void **)outlen);
+		for(j=0;j<=args.Olen[outlen];j++)putc(Cdocv[outlen][j],outfile);//i 가 일치 안함. 
+	}
 	return 0;
 }
 int JsonIO(){
@@ -68,7 +86,7 @@ int JsonIO(){
 	if( (document = (unsigned char **)malloc(DocS)) == NULL) return 2;
 	int i;
 	for(i=0; i<CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc((int)(Csize*0.4)) ) == NULL) return 2;
-	for(i=0;i<CORE;i++)printf("%d,",Cdoc[i]);
+	printf("[Main]%d,%d,%d,%d\n",Cdoc[0],Cdoc[1],Cdoc[2],Cdoc[3]);
 	printf("\n");
 	
 	doclen = ReadJSON(input,cache,document);

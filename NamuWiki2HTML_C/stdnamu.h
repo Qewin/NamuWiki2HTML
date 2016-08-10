@@ -15,9 +15,10 @@ typedef struct pointerstring{
 	int len; //길이.(0부터 세었다.) 
 }pstring;
 typedef struct combinediostring{
-	unsigned char *Cdoc[]; //자기 쓰레드 번호에 집어넣으면 끝! 
+	unsigned char *Cdoc[CORE]; //자기 쓰레드 번호에 집어넣으면 끝! 
 	unsigned char **Ip; // 입력 포인터 
 	int Ilen; //길이.(0부터 세었다.) 
+	int Olen[CORE]; 
 }cstring;
 
 short u2utf8(unsigned char *u, unsigned char* output){
@@ -101,7 +102,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 			default: Plain
 		}
 	}
-	return (index2);
+	return (index2);    //strspn 참고 ************************** 
 }
 int parse(int Nspace, string title, string text, unsigned char* opt){
 	int index,index2;
@@ -115,6 +116,6 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	output[index2++] ='\n';
 	index2 = parsetext(text,opt,index2);
 	strncpy(opt+index2,"\n</>\n",5);
-	printf("%c%c%c\n",opt[1],opt[2],opt[3]);
+	//printf("%c%c%c\n",opt[1],opt[2],opt[3]);
 	return index2+5; // 작성한 위치 다음을 반환한다. 
 }
