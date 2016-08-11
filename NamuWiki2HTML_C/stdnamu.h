@@ -2,7 +2,8 @@
 #include <stdlib.h>
 
 #define CORE 4
-#define Csize  CORE*50*1000*1000
+#define MUL 10
+#define Csize  CORE*MUL*5*1000*1000
 #define parsetitle(a,b,c) { if(a[b] == '\\'){ switch(a[++b]){ case 't': output[c] = '\t'; break; case 'u': c += u2utf8(a+b+1,output+c) - 1; b += 4; break; default: output[c] = a[b]; break;}} else output[c] = a[b]; c++; b++; }
 #define Plain output[index2++] = txt[index]; break;
 
@@ -99,6 +100,8 @@ int parsetext(string text, unsigned char* output, int index2v){
 			}
 			//case '~':break;
 			//case '-':break;
+			case '<':break;
+			case '>':break;
 			default: Plain
 		}
 	}
@@ -112,6 +115,10 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	index2 = 0; //output index
 	index =0; //input index
 	int i;
+	//if(Nspace != 0){
+	//	output[index2++] = Nspace+48;
+	//	output[index2++] = ':';
+	//}
 	while(index<=title.len) parsetitle(ttl,index,index2)
 	output[index2++] ='\n';
 	index2 = parsetext(text,opt,index2);

@@ -1,7 +1,7 @@
 #include "stdnamu.h"
 #include <pthread.h> 
 
-#define DocS 125000*CORE
+#define DocS 12500*CORE*MUL
 
 pthread_t threads[CORE];
 
@@ -13,6 +13,8 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~
 		while( (cache[a++] = getc(input)) != '\"' ){
 			while( (cache[a++] = getc(input)) != '{' ){
 				if(feof(input) != 0){
+					int i;
+					for(i=a-100;i<a;i++)printf("%c",cache[a]);
 					*(document+iv+1) = &cache[a];
 					return -iv;
 					} // EOF 도. feof();
@@ -44,10 +46,6 @@ void *workthread(void *input){ //실제로는 cstring받게 함.
 		while( document[txtend--] != '[' ) while( document[txtend--] != '\"' );
 		index += parse((int)(document[12]-48),title,text, Cdoc + index);
 	}
-	//free(Cdoc);
-	//CORE*i+pthread_self() 번째 문서만 처리한다.
-	//i/o 포인터 받는다.
-	//끝포인터 반환. 
 	io->Olen[Tnum] = index;
 	return (void *)Tnum;
 }
@@ -76,7 +74,7 @@ int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 int JsonIO(){
 	FILE *input;
 	FILE *outfile;
-	int output, doclen;
+	int sum, output, doclen;
 	unsigned char *cache;
 	unsigned char **document;
 	unsigned char *Cdoc[CORE];
@@ -90,10 +88,12 @@ int JsonIO(){
 	printf("\n");
 	
 	doclen = ReadJSON(input,cache,document);
+	sum = doclen;
 	while(doclen > 0){
 		//printf("%c",*(*(doc.p+doc.len+1)-1));
 		if ((output = worker((pstring){document,doclen},outfile,Cdoc)) != 0) return 2;
 		doclen = ReadJSON(input,cache,document);
+		sum += doclen;
 	}
 	if ((output = worker((pstring){document,-doclen},outfile,Cdoc)) != 0) return 2;
 	
@@ -101,6 +101,7 @@ int JsonIO(){
 	free(document);
 	fclose(input);
 	fclose(outfile);
+	printf("총 문서:%d",sum);
 	
 	return 0;
 }
