@@ -53,21 +53,14 @@ void *workthread(void *input){ //실제로는 cstring받게 함.
 #undef text
 int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	int i,j,outlen;
-	printf("\n");
-	//for(i=0;i<CORE;i++) printf("%d,",Cdocv[i]);
-	printf("\n");
 	printf("Converting\r");
 	cstring args;
 	for(i=0;i<CORE;i++) args.Cdoc[i] = Cdocv[i];
 	args.Ilen = doc.len;
 	args.Ip = doc.p;
-	//printf("[Worker1](%d/%d)\n",Cdocv,doc.p);
-	//printf("[Worker2](%d/%d)\n",args.Cdoc,args.Ip);z
 	for(i=0;i<CORE;i++) pthread_create(&threads[i], NULL, &workthread, &args);
-	printf("\n");
 	for(i=0;i<CORE;i++) {
 		pthread_join(threads[i],(void **) &outlen);
-		//printf("thread %d:%d\n",i,outlen);
 		for(j=0;j<args.Olen[outlen];j++)putc(Cdocv[outlen][j],outfile);//olen은 구조상 범위 밖까지 포함되므로 outlen 제외. 
 	}
 	return 0;
@@ -91,7 +84,6 @@ int JsonIO(){
 	doclen = ReadJSON(input,cache,document);
 	sum = doclen;
 	while(doclen > 0){
-		//printf("%c",*(*(doc.p+doc.len+1)-1));
 		if ((output = worker((pstring){document,doclen},outfile,Cdoc)) != 0) return 2;
 		doclen = ReadJSON(input,cache,document);
 		sum += doclen;
