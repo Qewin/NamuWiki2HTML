@@ -87,8 +87,8 @@ int parsetext(string text, unsigned char* output, int index2v){
 								append("</a>");
 							}
 							else{
-								//append("<a href=\"entry://");
-								i = index2;
+								append("<a href=\"entry://");
+								//i = index2;
 								index2 =  parsetext((string){txt+index,end-index-1},output,index2); //0부터니까 -1 
 								append("\">");
 								/*
