@@ -50,17 +50,33 @@ short u2utf8(unsigned char *u, unsigned char* output){
 }
 #define append(a) memcpy(output+index2,a,sizeof(a)-1); \
                   index2 += sizeof(a)-1
+#define UntilNewLine(i) for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++)
+typedef enum {false, true} bool;
 int parsetext(string text, unsigned char* output, int index2v){
 	int index2 = index2v, index, i;
+	bool strike1 = false, strike2 = false;
 	unsigned char* txt = (char*)text.p;
 	for (index=0;index<=text.len;index++){
 		switch(txt[index]){
 			case '\\':{
-				switch(txt[++index]){ // txt : \uXXXX 에서 u  
-					case 't': output[index2++] = '\t'; break;
-					case 'n': append("<br>"); break;
-					case 'u': index2 += u2utf8(txt+index+1,output+index2); index += 4; break;//
-					default: Plain
+				switch(txt[index+1]){ // txt : \uXXXX 에서 u  
+					case 'u': {
+						do{
+							index2 += u2utf8(txt+index+2,output+index2);
+							index += 6;
+							if(txt[index] == ' ') output[index2++] = txt[index++];
+						}while(txt[index] == '\\' && txt[index+1] == 'u');
+						index--;
+						break;
+						}
+					case 'n': {
+						index++;
+						if (strike1 || strike2){append("</s>");}
+						append("<br>"); 
+						break;
+					}
+					case 't': index++; output[index2++] = '\t'; break;
+					default: index++; Plain
 					}
 				break;
 			}
@@ -71,7 +87,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 						int bar = -1;
 						int end = -1;
 						
-						for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++){
+						UntilNewLine(i){
 							if(txt[i] == ']' && txt[i+1] == ']'){
 								end = i;
 								break;
@@ -111,10 +127,31 @@ int parsetext(string text, unsigned char* output, int index2v){
 				}
 				break;
 			}
-			//case '~':break;
+			case '~':{
+				if (txt[++index] == '~'){
+					if (strike1){append("</s>");}
+					else {append("<s>");}
+					strike1 = !strike1;
+				}
+				else Plain
+				break;
+			}
+			case '-':{
+				if (txt[++index] == '-'){
+					if (strike2){append("</s>");}
+					else {append("<s>");}
+					strike2 = !strike2;
+				}
+				else Plain
+				break;
+			}
+			//case '\''{
+			//	if()
+			//	else Plain
+			//}
 			//case '-':break;
-			case '<':break;
-			case '>':break;
+			case '<':append("&lt;"); break;
+			case '>':append("&gt;"); break;
 			default: Plain
 		}
 	}
