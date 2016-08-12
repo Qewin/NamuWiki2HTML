@@ -48,7 +48,8 @@ short u2utf8(unsigned char *u, unsigned char* output){
     return index; //기록한 index 다음을 반환함. 
 	
 }
-//int parsetable(string text);
+#define append(a) memcpy(output+index2,a,sizeof(a)-1); \
+                  index2 += sizeof(a)-1
 int parsetext(string text, unsigned char* output, int index2v){
 	int index2 = index2v, index, i;
 	unsigned char* txt = (char*)text.p;
@@ -57,7 +58,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 			case '\\':{
 				switch(txt[++index]){ // txt : \uXXXX 에서 u  
 					case 't': output[index2++] = '\t'; break;
-					case 'n': output[index2++] = '\n'; break;
+					case 'n': append("<br>"); break;
 					case 'u': index2 += u2utf8(txt+index+1,output+index2); index += 4; break;//
 					default: Plain
 					}
@@ -71,7 +72,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 						int end = -1;
 						
 						for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++){
-							if(txt[i] == ']' && txt[i+1 == ']']){
+							if(txt[i] == ']' && txt[i+1] == ']'){
 								end = i;
 								break;
 							}
@@ -79,20 +80,32 @@ int parsetext(string text, unsigned char* output, int index2v){
 						}
 						if(end != -1){
 							if (bar != -1){
-								strncpy(output+index2,"<a href=\"entry://",17);
-								index2 = parsetext((string){txt+index,bar-index-1},output,index2+17);
-								strncpy(output+index2,"\">",2);
-								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2+2);
-								strncpy(output+index2,"</a>",4);
-								index2 += 4;
-								index = end + 1;
+								append("<a href=\"entry://");
+								index2 = parsetext((string){txt+index,bar-index-1},output,index2); //0부터니까 -1 
+								append("\">");
+								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2);
+								append("</a>");
 							}
 							else{
-								
+								//append("<a href=\"entry://");
+								i = index2;
+								index2 =  parsetext((string){txt+index,end-index-1},output,index2); //0부터니까 -1 
+								append("\">");
+								/*
+								<a href=\"entry://"bla">bla</a>
+								                   ^    ^
+								                   i    index2
+												    
+								*/
+								index2 =  parsetext((string){txt+index,end-index-1},output,index2);
+								//memcpy(output+index2,output+i,index2-i-4);
+								//index2 += index2-i-4;
+								append("</a>");
 							}
+							index = end + 1;
 							break;
 						}
-						//else; //default로 
+						else Plain 
 					}
 					default: Plain
 				}
@@ -107,6 +120,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 	}
 	return (index2);    //strspn 참고 ************************** 
 }
+#undef append(a)
 int parse(int Nspace, string title, string text, unsigned char* opt){
 	int index,index2;
 	unsigned char* ttl = (char*)title.p;
@@ -115,10 +129,11 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	index2 = 0; //output index
 	index =0; //input index
 	int i;
-	//if(Nspace != 0){
-	//	output[index2++] = Nspace+48;
-	//	output[index2++] = ':';
-	//}
+	if(Nspace != 0){
+		output[index2++] = Nspace+48;
+		output[index2++] = ':';
+	}
+	while(ttl[index] == 0)index++;
 	while(index<=title.len) parsetitle(ttl,index,index2)
 	output[index2++] ='\n';
 	index2 = parsetext(text,opt,index2);

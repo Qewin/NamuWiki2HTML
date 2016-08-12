@@ -14,7 +14,7 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~
 			while( (cache[a++] = getc(input)) != '{' ){
 				if(feof(input) != 0){
 					int i;
-					for(i=a-100;i<a;i++)printf("%c",cache[a]);
+					//for(i=a-100;i<a;i++)printf("%c",cache[a]);
 					*(document+iv+1) = &cache[a];
 					return -iv;
 					} // EOF 도. feof();
@@ -22,7 +22,7 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~
 		} 
 	} // 마지막은 기록 안됨.
 	*(document+iv) = &cache[a];
-	printf("%d",iv);
+	//printf("%d",iv);
 	return (--iv);
 }
 
@@ -32,7 +32,7 @@ void *workthread(void *input){ //실제로는 cstring받게 함.
 	cstring *io = (cstring*)input;
 	//printf("[Main]%d,%d,%d,%d\n",io->Cdoc[0],io->Cdoc[1],io->Cdoc[2],io->Cdoc[3]);
 	int i,ttlend,txtend,index = 0,Tnum = pthread_self();
-	printf("[Thread:%d](%d/%d)\n",Tnum,io->Cdoc,io->Ip);
+	//printf("[Thread:%d](%d/%d)\n",Tnum,io->Cdoc,io->Ip);
 	Tnum = Tnum % CORE;
 	unsigned char *document;
 	unsigned char *Cdoc = io->Cdoc[Tnum];
@@ -66,8 +66,9 @@ int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	for(i=0;i<CORE;i++) pthread_create(&threads[i], NULL, &workthread, &args);
 	printf("\n");
 	for(i=0;i<CORE;i++) {
-		pthread_join(threads[i],(void **)outlen);
-		for(j=0;j<=args.Olen[outlen];j++)putc(Cdocv[outlen][j],outfile);//i 가 일치 안함. 
+		pthread_join(threads[i],(void **) &outlen);
+		//printf("thread %d:%d\n",i,outlen);
+		for(j=0;j<args.Olen[outlen];j++)putc(Cdocv[outlen][j],outfile);//olen은 구조상 범위 밖까지 포함되므로 outlen 제외. 
 	}
 	return 0;
 }
