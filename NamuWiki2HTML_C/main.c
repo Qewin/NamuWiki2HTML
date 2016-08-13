@@ -2,10 +2,35 @@
 #include <pthread.h> 
 
 #define DocS 12500*CORE*MUL
+#define Csize  CORE*MUL*5*1000*1000
 
 pthread_t threads[CORE];
-
-int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의 포인터가 들어 있음.(2번째 로딩부터는 사용.)
+int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document, unsigned char *oldend){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의 포인터가 들어 있음.(2번째 로딩부터는 사용.)
+	printf("Reading             \r");
+	int readsize = (oldend-cache), readlen;
+	if(readsize) {
+		memcpy(cache,oldend,(Csize - readsize));
+		readlen = fread(cache+Csize-readsize,sizeof(char),readsize,input);
+	}
+	else {
+		readsize = Csize;
+		readlen = fread(cache,sizeof(char),readsize,input);
+	}
+	
+	int iv, a;
+	for (a = iv = 0; (Csize - 15000000) > a && iv != DocS; iv++) {
+		*(document+iv) = &cache[a];
+		while(cache[a++] != '\"') while(cache[a++] != '{') if((Csize-10) <= a) goto fin;
+	}
+	fin:
+	*(document+iv) = &cache[a];
+	if (readlen == readsize) return (--iv);
+	else {
+		*(document+iv+1) = cache + readlen;
+		return -iv;
+	}
+}
+/*int OldReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의 포인터가 들어 있음.(2번째 로딩부터는 사용.)
 	printf("Reading             \r");
 	int iv, a;
 	for (a = iv = 0; (Csize - 15000000) > a && iv != DocS; iv++) { //realloc과 기타 등등을 이용하여 에러 처리. 
@@ -24,7 +49,7 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~
 	*(document+iv) = &cache[a];
 	//printf("%d",iv);
 	return (--iv);
-}
+}*/
 
 #define title (string) {&document[24] , ((ttlend-4)-24)}
 #define text (string) {&document[ttlend+7] , ((txtend-17) - (ttlend+7))}
@@ -61,7 +86,8 @@ int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	for(i=0;i<CORE;i++) pthread_create(&threads[i], NULL, &workthread, &args);
 	for(i=0;i<CORE;i++) {
 		pthread_join(threads[i],(void **) &outlen);
-		for(j=0;j<args.Olen[outlen];j++)putc(Cdocv[outlen][j],outfile);//olen은 구조상 범위 밖까지 포함되므로 outlen 제외. 
+		//for(j=0;j<args.Olen[outlen];j++)putc(Cdocv[outlen][j],outfile);//olen은 구조상 범위 밖까지 포함되므로 outlen 제외. 
+		fwrite(Cdocv[outlen],sizeof(char),args.Olen[outlen],outfile); //olen은 구조상 범위 밖까지 포함되므로 outlen 제외. 0부터 시작. 
 	}
 	return 0;
 }
@@ -81,11 +107,11 @@ int JsonIO(){
 	printf("[Main]%d,%d,%d,%d\n",Cdoc[0],Cdoc[1],Cdoc[2],Cdoc[3]);
 	printf("\n");
 	
-	doclen = ReadJSON(input,cache,document);
+	doclen = ReadJSON(input,cache,document,cache);
 	sum = doclen;
 	while(doclen > 0){
 		if ((output = worker((pstring){document,doclen},outfile,Cdoc)) != 0) return 2;
-		doclen = ReadJSON(input,cache,document);
+		doclen = ReadJSON(input,cache,document,document[doclen+1]);
 		sum += doclen;
 	}
 	if ((output = worker((pstring){document,-doclen},outfile,Cdoc)) != 0) return 2;

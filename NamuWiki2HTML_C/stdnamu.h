@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define CORE 4
 #define MUL 10
-#define Csize  CORE*MUL*5*1000*1000
+
 #define parsetitle(a,b,c) { if(a[b] == '\\'){ switch(a[++b]){ case 't': output[c] = '\t'; break; case 'u': c += u2utf8(a+b+1,output+c) - 1; b += 4; break; default: output[c] = a[b]; break;}} else output[c] = a[b]; c++; b++; }
 #define Plain output[index2++] = txt[index++]; break;
-
+#define _FILE_OFFSET_BITS  64
+//4GB 제한 풀기 위해 필요함당. 
 typedef struct typicalstring{
 	unsigned char *p; //string 자체. 
 	int len; //길이.(0부터 세었다.) 
@@ -59,7 +61,8 @@ short u2utf8(unsigned char *u, unsigned char* output){
 					}
 int parsetext(string text, unsigned char* output, int index2v){
 	int index2 = index2v, index = 0, i;
-	bool strike1 = false, strike2 = false, italic = false, bold = false;
+	bool strike1 = false, strike2 = false, italic = false, bold = false, note = false;
+	bool color = false;
 	unsigned char* txt = (char*)text.p;
 	while(index<=text.len){
 		switch(txt[index]){
@@ -78,6 +81,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 						if (strike1 || strike2){append("</s>");}
 						if (italic){append("</em>");}
 						if (bold){append("</b>");}
+						if (note){append("</acronym>");}
 						append("<br>");
 						index++; 
 						break;
@@ -130,26 +134,32 @@ int parsetext(string text, unsigned char* output, int index2v){
 						}
 						else {Plain} 
 					}
+					case '*':{
+						if (!note){
+							append("<acronym title=\"#\">");
+							note = true;
+							index += 2;
+						}
+						else {Plain}
+						break;
+					}
 					default: Plain
 				}
 				break;
 			}
-			/*case '~':{
-				if (txt[++index] == '~'){
-					if (strike1){append("</s>");}
-					else {append("<s>");}
-					strike1 = !strike1;
-				}
-				else {Plain}
-				break;
-			}*/
 			case '~':{
-				if (txt[++index] == '~')TextProp(strike1,"<s>","</s>")
+				if (txt[++index] == '~'){
+					TextProp(strike1,"<s>","</s>")
+					index++;
+				}
 				else output[index2++] = '~';
 				break;
 			}
 			case '-':{
-				if (txt[++index] == '-')TextProp(strike2,"<s>","</s>")
+				if (txt[++index] == '-'){
+					TextProp(strike2,"<s>","</s>")
+					index++;
+				}
 				else output[index2++] = '-';
 				break;
 			}
@@ -162,6 +172,47 @@ int parsetext(string text, unsigned char* output, int index2v){
 					else TextProp(italic,"<em>","</em>")
 				}
 				else output[index2++] = '\'';
+				break;
+			}
+			case ']':{
+				if(note){
+					append("</acronym>");
+					note = !note; 
+					index++;
+				}
+				else {Plain}
+				break;
+			}
+			case '{':{
+				if(txt[index+1] == '{' && txt[index+2] == '{'){
+					index += 3;
+					if(txt[index] == '#'){
+						if(strncmp(&txt[index],"#!html",6) == 0){
+							while(strncmp(&txt[++index],"}}}",3) != 0);
+							index += 3;
+						}
+						else{
+							index++;
+							append("<font color=\"");
+							while(txt[index] != ' ') output[index2++] = txt[index++];
+							append("\">");
+							color = true;
+						}
+					}
+					else {Plain}
+				}
+				else {Plain}
+				break;
+			}
+			case '}':{
+				if(txt[index+1] == '}' && txt[index+2] == '}'){
+					index += 3;
+					if(color) {
+						append("</font>");
+					}
+				}
+				else {Plain}
+				break;
 			}
 			case '<':append("&lt;"); index++; break;
 			case '>':append("&gt;"); index++; break;
