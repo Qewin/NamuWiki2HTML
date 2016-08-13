@@ -5,7 +5,7 @@
 #define MUL 10
 #define Csize  CORE*MUL*5*1000*1000
 #define parsetitle(a,b,c) { if(a[b] == '\\'){ switch(a[++b]){ case 't': output[c] = '\t'; break; case 'u': c += u2utf8(a+b+1,output+c) - 1; b += 4; break; default: output[c] = a[b]; break;}} else output[c] = a[b]; c++; b++; }
-#define Plain output[index2++] = txt[index]; break;
+#define Plain output[index2++] = txt[index++]; break;
 
 typedef struct typicalstring{
 	unsigned char *p; //string 자체. 
@@ -21,6 +21,7 @@ typedef struct combinediostring{
 	int Ilen; //길이.(0부터 세었다.) 
 	int Olen[CORE]; 
 }cstring;
+typedef enum {false, true} bool;
 
 short u2utf8(unsigned char *u, unsigned char* output){
 	unsigned int i , ch = 0;
@@ -51,32 +52,38 @@ short u2utf8(unsigned char *u, unsigned char* output){
 #define append(a) memcpy(output+index2,a,sizeof(a)-1); \
                   index2 += sizeof(a)-1
 #define UntilNewLine(i) for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++)
-typedef enum {false, true} bool;
+#define TextProp(boolean,start,end) { \
+					if (boolean){append(end);} \
+					else {append(start);} \
+					boolean = !boolean; \
+					}
 int parsetext(string text, unsigned char* output, int index2v){
-	int index2 = index2v, index, i;
-	bool strike1 = false, strike2 = false;
+	int index2 = index2v, index = 0, i;
+	bool strike1 = false, strike2 = false, italic = false, bold = false;
 	unsigned char* txt = (char*)text.p;
-	for (index=0;index<=text.len;index++){
+	while(index<=text.len){
 		switch(txt[index]){
 			case '\\':{
-				switch(txt[index+1]){ // txt : \uXXXX 에서 u  
+				switch(txt[++index]){ // txt : \uXXXX 에서 u  
 					case 'u': {
+						index--;
 						do{
 							index2 += u2utf8(txt+index+2,output+index2);
 							index += 6;
 							if(txt[index] == ' ') output[index2++] = txt[index++];
 						}while(txt[index] == '\\' && txt[index+1] == 'u');
-						index--;
 						break;
 						}
 					case 'n': {
-						index++;
 						if (strike1 || strike2){append("</s>");}
-						append("<br>"); 
+						if (italic){append("</em>");}
+						if (bold){append("</b>");}
+						append("<br>");
+						index++; 
 						break;
 					}
-					case 't': index++; output[index2++] = '\t'; break;
-					default: index++; Plain
+					case 't': output[index2++] = '\t'; index++; break;
+					default: Plain
 					}
 				break;
 			}
@@ -118,40 +125,46 @@ int parsetext(string text, unsigned char* output, int index2v){
 								//index2 += index2-i-4;
 								append("</a>");
 							}
-							index = end + 1;
+							index = end + 2;
 							break;
 						}
-						else Plain 
+						else {Plain} 
 					}
 					default: Plain
 				}
 				break;
 			}
-			case '~':{
+			/*case '~':{
 				if (txt[++index] == '~'){
 					if (strike1){append("</s>");}
 					else {append("<s>");}
 					strike1 = !strike1;
 				}
-				else Plain
+				else {Plain}
+				break;
+			}*/
+			case '~':{
+				if (txt[++index] == '~')TextProp(strike1,"<s>","</s>")
+				else output[index2++] = '~';
 				break;
 			}
 			case '-':{
-				if (txt[++index] == '-'){
-					if (strike2){append("</s>");}
-					else {append("<s>");}
-					strike2 = !strike2;
-				}
-				else Plain
+				if (txt[++index] == '-')TextProp(strike2,"<s>","</s>")
+				else output[index2++] = '-';
 				break;
 			}
-			//case '\''{
-			//	if()
-			//	else Plain
-			//}
-			//case '-':break;
-			case '<':append("&lt;"); break;
-			case '>':append("&gt;"); break;
+			case '\'':{
+				if(txt[++index] == '\''){
+					if(txt[++index] == '\'') {
+						index++;
+						TextProp(bold,"<b>","</b>")
+					}
+					else TextProp(italic,"<em>","</em>")
+				}
+				else output[index2++] = '\'';
+			}
+			case '<':append("&lt;"); index++; break;
+			case '>':append("&gt;"); index++; break;
 			default: Plain
 		}
 	}
