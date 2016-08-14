@@ -61,7 +61,7 @@ short u2utf8(unsigned char *u, unsigned char* output){
 					}
 #define TextDeco(boolean,start,end,char) { \
 				if (txt[++index] == char){ \
-					TextProp(boolean,"start","end") \
+					TextProp(boolean,start,end) \
 					index++; \
 				} \
 				else output[index2++] = char; \
@@ -227,6 +227,103 @@ int parsetext(string text, unsigned char* output, int index2v){
 			case '<':append("&lt;"); index++; break;
 			case '>':append("&gt;"); index++; break;
 			case '&':append("&quot;"); index++; break;
+			case '|':{
+				if(txt[index+1] == '|'){
+					bool line = false, table = false;
+					while(1){ //루프. 
+						index +=2;
+						int next = -1;
+						for(i=index;i<=text.len;i++){
+							if(txt[i] == '|' && txt[i+1] == '|'){
+								next = i;
+								break;
+							}
+							else if(txt[i] == '\\' && txt[i+1] == 'n') break;
+						}//줄바꿈 전의 || 찾는다 
+						if(next == -1){ // || 없다! 
+							if(table){ //표 시작했다. 
+								append("</tr>");
+								int j = index;
+								while(txt[j] == ' ')j++;
+								//줄바꿈 전에 뭐라도 쓰여 있는지 체크한다. 
+								if (i == j){//줄바꿈 전에 아무것도 없다.
+									j +=2;
+									while(txt[j] == ' ' || txt[j] == '*' || txt[j] == '>')j++;
+									//다음 줄에 ||가 있는지 확인한다. 
+									if(txt[j] == '|' && txt[j+1] == '|'){
+										line=false;
+										index = j;
+									} //있다: line=false, index를 다음 줄 ||로.
+									else{
+										append("</table>");
+										goto table;
+									} //없다: </table>, (table=false,) 루프 탈출
+								}
+								else{//줄바꿈 전에 뭔가 있다.
+									int multiline = -1;
+									i++;
+									while((txt[i-1] != 'n' || txt[i] != '=' || txt[i+1] != '=') && i<=text.len){
+										if(txt[i] == '|' && txt[i+1] == '|'){
+											multiline = i;
+											break;
+										}
+									}
+									if(multiline == -1){ // 없다. 
+										append("</table>");
+										goto table; 
+									}
+									else{ // 있다. 
+										if(!table) {
+											append("<table>");
+											table = true;
+										}
+										if(!line) {
+											append("<tr");
+											//
+											///
+											output[index2++] = '>';
+											line = true;
+										}
+										index2 += sprintf(output+index2, "<td>");
+										index2 = parsetext((string){txt+index,multiline-index-2},output,index2);
+										index = multiline;
+										append("</td>"); 
+									}
+								}
+							}
+							else{ //표 시작도 안했다. 
+								append("||");
+								goto table;
+							}
+						}
+						else{ //줄바꿈 전의 ||을 찾았다. 
+							int colnum = 1;
+							while(txt[index] == '|' && txt[index+1] == '|'){
+								index += 2;
+								colnum++;
+							}
+							if(!table) {
+								append("<table>");
+								table = true;
+							}
+							if(!line) {
+								append("<tr");
+								//
+								///
+								output[index2++] = '>';
+								line = true;
+							}
+							index2 += sprintf(output+index2, "<td colspan=\"%d\">",colnum);
+							index2 = parsetext((string){txt+index,next-index-2},output,index2);
+							index = next;
+							append("</td>");
+						}
+					}
+					table:;
+				}
+				else{Plain}
+				break;
+			}
 			default: Plain
 		}
 	}
@@ -248,7 +345,17 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	while(ttl[index] == 0)index++;
 	while(index<=title.len) parsetitle(ttl,index,index2)
 	output[index2++] ='\n';
-	index2 = parsetext(text,opt,index2);
+	unsigned char* txt = (char*)text.p;
+	if(memcmp(text.p,"#redirect",9) == 0){
+		index = 10; //공백까지. 
+		index2 += sprintf(output+index2,"<a href=\"entry://");
+		while(index<=text.len-2) parsetitle(txt,index,index2)
+		index2 += sprintf(output+index2,"\">Redirect</a>");
+	}
+	else {
+		index2 += sprintf(output+index2,"<head><link rel=\"style\" type=\"text/css\" href=\"qewin.css\"></head>");
+		index2 = parsetext(text,opt,index2);
+	}
 	strncpy(opt+index2,"\n</>\n",5);
 	return index2+5; // 작성한 위치 다음을 반환한다. 
 }
