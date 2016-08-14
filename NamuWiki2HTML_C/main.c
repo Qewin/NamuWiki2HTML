@@ -30,38 +30,15 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document, unsign
 		return -iv;
 	}
 }
-/*int OldReadJSON(FILE *input, unsigned char *cache, unsigned char **document){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의 포인터가 들어 있음.(2번째 로딩부터는 사용.)
-	printf("Reading             \r");
-	int iv, a;
-	for (a = iv = 0; (Csize - 15000000) > a && iv != DocS; iv++) { //realloc과 기타 등등을 이용하여 에러 처리. 
-		*(document+iv) = &cache[a]; //{"n 에서 n이 반환됨. 
-		while( (cache[a++] = getc(input)) != '\"' ){
-			while( (cache[a++] = getc(input)) != '{' ){
-				if(feof(input) != 0){
-					int i;
-					//for(i=a-100;i<a;i++)printf("%c",cache[a]);
-					*(document+iv+1) = &cache[a];
-					return -iv;
-					} // EOF 도. feof();
-			}
-		} 
-	} // 마지막은 기록 안됨.
-	*(document+iv) = &cache[a];
-	//printf("%d",iv);
-	return (--iv);
-}*/
 
 #define title (string) {&document[24] , ((ttlend-4)-24)}
 #define text (string) {&document[ttlend+7] , ((txtend-17) - (ttlend+7))}
 void *workthread(void *input){ //실제로는 cstring받게 함. 
 	cstring *io = (cstring*)input;
-	//printf("[Main]%d,%d,%d,%d\n",io->Cdoc[0],io->Cdoc[1],io->Cdoc[2],io->Cdoc[3]);
 	int i,ttlend,txtend,index = 0,Tnum = pthread_self();
-	//printf("[Thread:%d](%d/%d)\n",Tnum,io->Cdoc,io->Ip);
 	Tnum = Tnum % CORE;
 	unsigned char *document;
 	unsigned char *Cdoc = io->Cdoc[Tnum];
-	//unsigned char *Cdoc = (unsigned char *)malloc(Csize);
 	for(i=Tnum;i<=io->Ilen;i+=CORE){
 		document = (io->Ip[i]);
 		if(document[0] != 'n')continue;
@@ -104,8 +81,7 @@ int JsonIO(){
 	if( (document = (unsigned char **)malloc(DocS)) == NULL) return 2;
 	int i;
 	for(i=0; i<CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc((int)(Csize*0.4)) ) == NULL) return 2;
-	printf("[Main]%d,%d,%d,%d\n",Cdoc[0],Cdoc[1],Cdoc[2],Cdoc[3]);
-	printf("\n");
+	printf("[Main]Threads:%d\n",CORE);
 	
 	doclen = ReadJSON(input,cache,document,cache);
 	sum = doclen;

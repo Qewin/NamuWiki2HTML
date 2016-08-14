@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CORE 4
 #define MUL 10
+#define CORE 4
 
 #define parsetitle(a,b,c) { if(a[b] == '\\'){ switch(a[++b]){ case 't': output[c] = '\t'; break; case 'u': c += u2utf8(a+b+1,output+c) - 1; b += 4; break; default: output[c] = a[b]; break;}} else output[c] = a[b]; c++; b++; }
 #define Plain output[index2++] = txt[index++]; break;
@@ -59,10 +59,19 @@ short u2utf8(unsigned char *u, unsigned char* output){
 					else {append(start);} \
 					boolean = !boolean; \
 					}
+#define TextDeco(boolean,start,end,char) { \
+				if (txt[++index] == char){ \
+					TextProp(boolean,"start","end") \
+					index++; \
+				} \
+				else output[index2++] = char; \
+				break; \
+			}
 int parsetext(string text, unsigned char* output, int index2v){
 	int index2 = index2v, index = 0, i;
-	bool strike1 = false, strike2 = false, italic = false, bold = false, note = false;
-	bool color = false;
+	bool strike1 = false, strike2 = false, italic = false, bold = false;
+	bool sub = false, sup = false, ubar = false;
+	bool color = false, size = false, note = false;
 	unsigned char* txt = (char*)text.p;
 	while(index<=text.len){
 		switch(txt[index]){
@@ -82,6 +91,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 						if (italic){append("</em>");}
 						if (bold){append("</b>");}
 						if (note){append("</acronym>");}
+						if (ubar){append("</u>");}
 						append("<br>");
 						index++; 
 						break;
@@ -147,22 +157,11 @@ int parsetext(string text, unsigned char* output, int index2v){
 				}
 				break;
 			}
-			case '~':{
-				if (txt[++index] == '~'){
-					TextProp(strike1,"<s>","</s>")
-					index++;
-				}
-				else output[index2++] = '~';
-				break;
-			}
-			case '-':{
-				if (txt[++index] == '-'){
-					TextProp(strike2,"<s>","</s>")
-					index++;
-				}
-				else output[index2++] = '-';
-				break;
-			}
+			case '~':TextDeco(strike1,"<s>","</s>",'~')
+			case '-':TextDeco(strike2,"<s>","</s>",'-')
+			case '_':TextDeco(ubar,"<u>","</u>",'_')
+			case '^':TextDeco(sup,"<sup>","</sup>",'^')
+			case ',':TextDeco(sub,"<sub>","</sub>",',')
 			case '\'':{
 				if(txt[++index] == '\''){
 					if(txt[++index] == '\'') {
@@ -199,6 +198,12 @@ int parsetext(string text, unsigned char* output, int index2v){
 							color = true;
 						}
 					}
+					else if(txt[index] == '+'){
+						append("<font size=\"");
+						output[index2++] = txt[index++];
+						append("\">");
+						size = true;
+					}
 					else {Plain}
 				}
 				else {Plain}
@@ -209,6 +214,11 @@ int parsetext(string text, unsigned char* output, int index2v){
 					index += 3;
 					if(color) {
 						append("</font>");
+						color = false;
+					}
+					else if(size) {
+						append("</font>");
+						size = false;
 					}
 				}
 				else {Plain}
@@ -216,6 +226,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 			}
 			case '<':append("&lt;"); index++; break;
 			case '>':append("&gt;"); index++; break;
+			case '&':append("&quot;"); index++; break;
 			default: Plain
 		}
 	}
@@ -239,6 +250,5 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	output[index2++] ='\n';
 	index2 = parsetext(text,opt,index2);
 	strncpy(opt+index2,"\n</>\n",5);
-	//printf("%c%c%c\n",opt[1],opt[2],opt[3]);
 	return index2+5; // 작성한 위치 다음을 반환한다. 
 }
