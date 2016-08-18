@@ -257,7 +257,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 								line = true;
 							}
 							index2 += sprintf(output+index2,"<td colspan=\"%d\">",cols);
-							index2 = parsetext((string){txt+i,next-i},output,index2);
+							index2 = parsetext((string){txt+i,next-i-2},output,index2);
 							index = next;
 							index2 += sprintf(output+index2,"</td>");
 							checknext:;
