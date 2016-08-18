@@ -51,6 +51,22 @@ short u2utf8(unsigned char *u, unsigned char* output){
     return index; //기록한 index 다음을 반환함. 
 	
 }
+int nexttable(string text, int index){
+	int i;
+	unsigned char *txt = text.p;
+	for(i=index;;i++){
+		if(txt[i] == '|' && txt[i+1] == '|')return i;
+		if(txt[i] == '\\' && txt[i+1] == 'n')return 0;
+		if(txt[i] != ' ')break;
+	}
+	for(i++;i<=text.len;i++){
+		if(txt[i] == '|' && txt[i+1] == '|')return i;
+		if(txt[i] == '\\' && txt[i+1] == 'n'){
+			if(txt[i+2] == '=')return -1;
+		}
+	}
+}
+
 #define append(a) memcpy(output+index2,a,sizeof(a)-1); \
                   index2 += sizeof(a)-1
 #define UntilNewLine(i) for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++)
@@ -229,99 +245,47 @@ int parsetext(string text, unsigned char* output, int index2v){
 			case '&':append("&quot;"); index++; break;
 			case '|':{
 				if(txt[index+1] == '|'){
-					bool line = false, table = false;
-					while(1){ //루프. 
-						index +=2;
-						int next = -1;
-						for(i=index;i<=text.len;i++){
-							if(txt[i] == '|' && txt[i+1] == '|'){
-								next = i;
-								break;
-							}
-							else if(txt[i] == '\\' && txt[i+1] == 'n') break;
-						}//줄바꿈 전의 || 찾는다 
-						if(next == -1){ // || 없다! 
-							if(table){ //표 시작했다. 
-								append("</tr>");
-								int j = index;
-								while(txt[j] == ' ')j++;
-								//줄바꿈 전에 뭐라도 쓰여 있는지 체크한다. 
-								if (i == j){//줄바꿈 전에 아무것도 없다.
-									j +=2;
-									while(txt[j] == ' ' || txt[j] == '*' || txt[j] == '>')j++;
-									//다음 줄에 ||가 있는지 확인한다. 
-									if(txt[j] == '|' && txt[j+1] == '|'){
-										line=false;
-										index = j;
-									} //있다: line=false, index를 다음 줄 ||로.
-									else{
-										append("</table>");
-										goto table;
-									} //없다: </table>, (table=false,) 루프 탈출
-								}
-								else{//줄바꿈 전에 뭔가 있다.
-									int multiline = -1;
-									i++;
-									while((txt[i-1] != 'n' || txt[i] != '=' || txt[i+1] != '=') && i<=text.len){
-										if(txt[i] == '|' && txt[i+1] == '|'){
-											multiline = i;
-											break;
-										}
-									}
-									if(multiline == -1){ // 없다. 
-										append("</table>");
-										goto table; 
-									}
-									else{ // 있다. 
-										if(!table) {
-											append("<table>");
-											table = true;
-										}
-										if(!line) {
-											append("<tr");
-											//
-											///
-											output[index2++] = '>';
-											line = true;
-										}
-										index2 += sprintf(output+index2, "<td>");
-										index2 = parsetext((string){txt+index,multiline-index-2},output,index2);
-										index = multiline;
-										append("</td>"); 
-									}
-								}
-							}
-							else{ //표 시작도 안했다. 
-								append("||");
-								goto table;
-							}
-						}
-						else{ //줄바꿈 전의 ||을 찾았다. 
-							int colnum = 1;
-							while(txt[index] == '|' && txt[index+1] == '|'){
-								index += 2;
-								colnum++;
-							}
-							if(!table) {
-								append("<table>");
-								table = true;
-							}
-							if(!line) {
-								append("<tr");
-								//
-								///
-								output[index2++] = '>';
+					int cols=0, next;
+					for(i=index;txt[i]=='|'&&txt[i+1]=='|';i+=2)cols++;
+					if(0 < (next = nexttable(text,i)) ){
+						index2 += sprintf(output+index2,"<table>");
+						bool line = false;
+						while(true){
+							//parse prop
+							if(!line){
+								index2 += sprintf(output+index2,"<tr>");
 								line = true;
 							}
-							index2 += sprintf(output+index2, "<td colspan=\"%d\">",colnum);
-							index2 = parsetext((string){txt+index,next-index-2},output,index2);
+							index2 += sprintf(output+index2,"<td colspan=\"%d\">",cols);
+							index2 = parsetext((string){txt+i,next-i},output,index2);
 							index = next;
-							append("</td>");
+							index2 += sprintf(output+index2,"</td>");
+							checknext:;
+							cols=0;
+							for(i=next;txt[i]=='|'&&txt[i+1]=='|';i+=2)cols++;
+							next = nexttable(text,i);
+							if(next == 0){
+								index2 += sprintf(output+index2,"</tr>");
+								while(txt[i]!='\\'&&txt[i+1]!='n')i++;
+								i+=2;
+								if(txt[i] == '|' && txt[i+1] == '|') line=false;
+								else break;
+								next = i;
+								goto checknext;
+								
+							}
+							else if(next == -1){
+								index2 += sprintf(output+index2,"</tr>");
+								break;
+							}
 						}
+						index2 += sprintf(output+index2,"</table>");
 					}
-					table:;
+					else {
+						index2 += sprintf(output+index2,"||");
+						index += 2;
+					}
 				}
-				else{Plain}
 				break;
 			}
 			default: Plain
