@@ -65,6 +65,7 @@ int nexttable(string text, int index){
 			if(txt[i+2] == '=')return -1;
 		}
 	}
+	return -1;
 }
 
 #define append(a) memcpy(output+index2,a,sizeof(a)-1); \
@@ -245,9 +246,11 @@ int parsetext(string text, unsigned char* output, int index2v){
 			case '&':append("&quot;"); index++; break;
 			case '|':{
 				if(txt[index+1] == '|'){
-					int cols=0, next;
-					for(i=index;txt[i]=='|'&&txt[i+1]=='|';i+=2)cols++;
-					if(0 < (next = nexttable(text,i)) ){
+					int cols=0, next, start;
+					int count = 0;
+					bool isNextLine = false;
+					for(start=index;txt[start]=='|'&&txt[start+1]=='|';start+=2)cols++;
+					if(0 < (next = nexttable(text,start)) ){
 						index2 += sprintf(output+index2,"<table>");
 						bool line = false;
 						while(true){
@@ -256,34 +259,48 @@ int parsetext(string text, unsigned char* output, int index2v){
 								index2 += sprintf(output+index2,"<tr>");
 								line = true;
 							}
-							index2 += sprintf(output+index2,"<td colspan=\"%d\">",cols);
-							index2 = parsetext((string){txt+i,next-i-2},output,index2);
-							index = next;
-							index2 += sprintf(output+index2,"</td>");
+							//index2 += sprintf(output+index2,"<td colspan=\"%d\">",cols);
+							//index2 = parsetext((string){txt+start,next-start-2},output,index2);
+							//index2 += sprintf(output+index2,"</td>");
 							checknext:;
+							index = next;
 							cols=0;
-							for(i=next;txt[i]=='|'&&txt[i+1]=='|';i+=2)cols++;
-							next = nexttable(text,i);
+							for(start=index;txt[start]=='|'&&txt[start+1]=='|';start+=2)cols++;
+							next = nexttable(text,start);
 							if(next == 0){
 								index2 += sprintf(output+index2,"</tr>");
-								while(txt[i]!='\\'&&txt[i+1]!='n')i++;
-								i+=2;
-								if(txt[i] == '|' && txt[i+1] == '|') line=false;
-								else break;
-								next = i;
-								goto checknext;
+								while(txt[start]!='\\'&&txt[start+1]!='n'){
+									start++;
+									if(text.len <= start) goto end;
+								}
+								if(isNextLine) {
+									index = start;
+									goto end;
+								}
+								if(txt[start] == '|' && txt[start+1] == '|') {
+									line=false;
+									next = start;
+									isNextLine = true;
+									goto checknext;
+								}
+								else {
+									index += 2; 
+									break;
+								}
 								
 							}
 							else if(next == -1){
 								index2 += sprintf(output+index2,"</tr>");
+								index = start; 
 								break;
 							}
 						}
+						end:;
 						index2 += sprintf(output+index2,"</table>");
 					}
 					else {
 						index2 += sprintf(output+index2,"||");
-						index += 2;
+						index = start;
 					}
 				}
 				break;
