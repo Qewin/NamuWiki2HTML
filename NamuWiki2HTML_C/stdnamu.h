@@ -1,10 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define MUL 10
-#define CORE 4
-
 #define parsetitle(a,b,c) { if(a[b] == '\\'){ switch(a[++b]){ case 't': output[c] = '\t'; break; case 'u': c += u2utf8(a+b+1,output+c) - 1; b += 4; break; default: output[c] = a[b]; break;}} else output[c] = a[b]; c++; b++; }
 #define Plain output[index2++] = txt[index++]; break;
 #define _FILE_OFFSET_BITS  64
@@ -17,12 +10,6 @@ typedef struct pointerstring{
 	unsigned char **p; //string 자체. 
 	int len; //길이.(0부터 세었다.) 
 }pstring;
-typedef struct combinediostring{
-	unsigned char *Cdoc[CORE]; //자기 쓰레드 번호에 집어넣으면 끝! 
-	unsigned char **Ip; // 입력 포인터 
-	int Ilen; //길이.(0부터 세었다.) 
-	int Olen[CORE]; 
-}cstring;
 typedef enum {false, true} bool;
 
 short u2utf8(unsigned char *u, unsigned char* output){
@@ -248,7 +235,6 @@ int parsetext(string text, unsigned char* output, int index2v){
 				if(txt[index+1] == '|'){
 					int cols=0, next, start;
 					int count = 0;
-					bool isNextLine = false;
 					for(start=index;txt[start]=='|'&&txt[start+1]=='|';start+=2)cols++;
 					if(0 < (next = nexttable(text,start)) ){
 						index2 += sprintf(output+index2,"<table>");
@@ -259,9 +245,9 @@ int parsetext(string text, unsigned char* output, int index2v){
 								index2 += sprintf(output+index2,"<tr>");
 								line = true;
 							}
-							//index2 += sprintf(output+index2,"<td colspan=\"%d\">",cols);
-							//index2 = parsetext((string){txt+start,next-start-2},output,index2);
-							//index2 += sprintf(output+index2,"</td>");
+							index2 += sprintf(output+index2,"<td colspan=\"%d\">",cols);
+							index2 = parsetext((string){txt+start,next-start-1},output,index2);
+							index2 += sprintf(output+index2,"</td>");
 							checknext:;
 							index = next;
 							cols=0;
@@ -273,14 +259,10 @@ int parsetext(string text, unsigned char* output, int index2v){
 									start++;
 									if(text.len <= start) goto end;
 								}
-								if(isNextLine) {
-									index = start;
-									goto end;
-								}
+								start+=2;
 								if(txt[start] == '|' && txt[start+1] == '|') {
 									line=false;
 									next = start;
-									isNextLine = true;
 									goto checknext;
 								}
 								else {
@@ -303,14 +285,14 @@ int parsetext(string text, unsigned char* output, int index2v){
 						index = start;
 					}
 				}
-				break;
+				Plain
 			}
 			default: Plain
 		}
 	}
 	return (index2);    //strspn 참고 ************************** 
 }
-#undef append(a)
+
 int parse(int Nspace, string title, string text, unsigned char* opt){
 	int index,index2;
 	unsigned char* ttl = (char*)title.p;
