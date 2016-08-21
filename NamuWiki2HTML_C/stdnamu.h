@@ -124,6 +124,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							index2 = parsetext((string){txt+index,i-index-1},output,index2,ParagraphIndex);
 							index2 += sprintf(output+index2,"</h%d>",paragraph2);
 							index = nextline;
+							//printf("%c%c%c\n",txt[index],txt[index+1],txt[index+2]);
 							}
 							else index -= paragraph;
 							
@@ -268,7 +269,10 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						index2+=sprintf(output+index2,"\">");
 						size = true;
 					}
-					else {Plain}
+					else {
+						while(txt[index] != '}' && txt[index+1] != '}' && txt[index+2] != '}' && index<text.len)parsetitle(text,index,index2)
+						index += 3;
+					}
 				}
 				else {Plain}
 				break;
