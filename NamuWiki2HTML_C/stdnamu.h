@@ -270,7 +270,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						size = true;
 					}
 					else {
-						while(txt[index] != '}' && txt[index+1] != '}' && txt[index+2] != '}' && index<text.len)parsetitle(text,index,index2)
+						while(txt[index] != '}' && txt[index+1] != '}' && txt[index+2] != '}' && index<text.len)parsetitle(txt,index,index2)
 						index += 3;
 					}
 				}
@@ -366,9 +366,54 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	index2 = 0; //output index
 	index =0; //input index
 	int i;
-	if(Nspace != 0){
-		output[index2++] = Nspace+48;
-		output[index2++] = ':';
+	switch(Nspace){
+		case 1:{
+			output[index2++] = 0xED;
+			output[index2++] = 0x8B;
+			output[index2++] = 0x80;
+			output[index2++] = ':'; //틀: 
+			break;
+		}
+		case 2:{
+			output[index2++] = 0xEB;
+			output[index2++] = 0xB6;
+			output[index2++] = 0x84;
+			output[index2++] = 0xEB;
+			output[index2++] = 0xA5;
+			output[index2++] = 0x98;
+			output[index2++] = ':'; //분류: 
+			break;
+		}
+		case 3:{
+			output[index2++] = 0xEC;
+			output[index2++] = 0x9D;
+			output[index2++] = 0xB4;
+			output[index2++] = 0xEB;
+			output[index2++] = 0xAF;
+			output[index2++] = 0xB8;
+			output[index2++] = 0xEC;
+			output[index2++] = 0xA7;
+			output[index2++] = 0x80;
+			output[index2++] = ':'; //이미지:
+			break;
+		}
+		case 6: {
+			output[index2++] = 0xEB;
+			output[index2++] = 0x82;
+			output[index2++] = 0x98;
+			output[index2++] = 0xEB;
+			output[index2++] = 0xAC;
+			output[index2++] = 0xB4;
+			output[index2++] = 0xEC;
+			output[index2++] = 0x9C;
+			output[index2++] = 0x84;
+			output[index2++] = 0xED;
+			output[index2++] = 0x82;
+			output[index2++] = 0xA4;
+			output[index2++] = ':'; //나무위키: 
+			break;
+		}
+		default: break;
 	}
 	while(ttl[index] == 0)index++;
 	while(index<=title.len) parsetitle(ttl,index,index2)
