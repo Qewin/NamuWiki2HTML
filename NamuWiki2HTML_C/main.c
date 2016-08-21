@@ -11,8 +11,8 @@ typedef struct combinediostring{
 	int Olen[16]; 
 }cstring;
 
-#define MUL 40 //10
-#define CORE 1 //4
+#define MUL 10 //10
+#define CORE 4 //4
 #define DocS 12500*CORE*MUL
 #define Csize  CORE*MUL*5*1000*1000
 #define TCsize (int)(Csize/CORE*1.1))
@@ -30,15 +30,17 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document, unsign
 	}
 	
 	int iv, a;
-	for (a = iv = 0; (Csize - 15000000) > a && iv != DocS; iv++) {
-		*(document+iv) = &cache[a];
-		while(cache[a++] != '\"') while(cache[a++] != '{') if((Csize-10) <= a) goto fin;
+	int full = (Csize - readsize) + readlen; //인덱스로 따지면 1 작아야 합니당! 
+	for (a = iv = 0;iv < DocS && a<(full - 4); iv++) {
+		document[iv] = &cache[a];
+		do{
+			while(cache[a++] != '{') if((full-4) <= a) goto fin;
+		} while(cache[a++] != '\"');
 	}
 	fin:
-	*(document+iv) = &cache[a];
 	if (readlen == readsize) return (--iv);
 	else {
-		*(document+iv+1) = cache + readlen;
+		document[iv+1] = cache + full - 4;
 		return -iv;
 	}
 }
@@ -63,7 +65,7 @@ void *workthread(void *input){ //실제로는 cstring받게 함.
 	io->Olen[Tnum] = index;
 	return (void *)Tnum;
 }
-int Mworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
+int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	pthread_t threads[CORE];
 	int i,j,outlen;
 	printf("Converting\r");
@@ -79,7 +81,7 @@ int Mworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	}
 	return 0;
 }
-int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
+int sworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	printf("Converting[SingleThread]\r");
 	
 	int i,index = 0,ttlend,txtend;
@@ -100,32 +102,32 @@ int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 int JsonIO(){
 	FILE *input;
 	FILE *outfile;
-	int sum, output, doclen;
+	int sum = 0, output, doclen;
 	unsigned char *cache;
 	unsigned char **document;
 	unsigned char *Cdoc[CORE];
 	if((input = fopen("namu.json","rb")) == NULL) return 1;
 	if((outfile = fopen("Cnamu.txt","w")) == NULL) return 3;
 	if( (cache = (unsigned char *)malloc(Csize)) == NULL) return 2;
-	if( (document = (unsigned char **)malloc(DocS)) == NULL) return 2;
+	if( (document = (unsigned char **)calloc(DocS,sizeof(unsigned char*))) == NULL) return 2;
 	int i;
 	for(i=0; i<CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc(TCsize) == NULL) return 2;
 	printf("[Main]Threads:%d\n",CORE);
 	
 	doclen = ReadJSON(input,cache,document,cache);
-	sum = doclen;
 	while(doclen > 0){
+		sum += doclen;
 		if ((output = worker((pstring){document,doclen},outfile,Cdoc)) != 0) return 2;
 		doclen = ReadJSON(input,cache,document,document[doclen+1]);
-		sum += doclen;
 	}
+	sum -= doclen;
 	if ((output = worker((pstring){document,-doclen},outfile,Cdoc)) != 0) return 2;
 	
 	free(cache);
 	free(document);
 	fclose(input);
 	fclose(outfile);
-	printf("총 문서:%d",sum);
+	printf("Documents:%d",sum);
 	
 	return 0;
 }

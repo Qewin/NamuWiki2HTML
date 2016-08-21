@@ -1,4 +1,13 @@
-#define parsetitle(a,b,c) { if(a[b] == '\\'){ switch(a[++b]){ case 't': output[c] = '\t'; break; case 'u': c += u2utf8(a+b+1,output+c) - 1; b += 4; break; default: output[c] = a[b]; break;}} else output[c] = a[b]; c++; b++; }
+#define parsetitle(text,index,index2) { \
+	if(text[index] == '\\'){ \
+		switch(text[++index]){ \
+		case 't': output[index2] = '\t'; break; \
+		case 'u': index2 += u2utf8(text+index+1,output+index2) - 1; index += 4; break; \
+		default: output[index2] = text[index]; break;\
+		}\
+	}\
+	else output[index2] = text[index]; index2++; index++; \
+}
 #define Plain output[index2++] = txt[index++]; break;
 #define _FILE_OFFSET_BITS  64
 //4GB 제한 풀기 위해 필요함당. 
@@ -55,12 +64,10 @@ int nexttable(string text, int index){
 	return -1;
 }
 
-#define append(a) memcpy(output+index2,a,sizeof(a)-1); \
-                  index2 += sizeof(a)-1
 #define UntilNewLine(i) for(i = index;(txt[i] != '\\' || txt[i+1] != 'n' ) && i<=text.len;i++)
 #define TextProp(boolean,start,end) { \
-					if (boolean){append(end);} \
-					else {append(start);} \
+					if (boolean)index2+=sprintf(output+index2,end); \
+					else index2+=sprintf(output+index2,start); \
 					boolean = !boolean; \
 					}
 #define TextDeco(boolean,start,end,char) { \
@@ -71,7 +78,8 @@ int nexttable(string text, int index){
 				else output[index2++] = char; \
 				break; \
 			}
-int parsetext(string text, unsigned char* output, int index2v){
+
+int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIndex){
 	int index2 = index2v, index = 0, i;
 	bool strike1 = false, strike2 = false, italic = false, bold = false;
 	bool sub = false, sup = false, ubar = false;
@@ -91,13 +99,35 @@ int parsetext(string text, unsigned char* output, int index2v){
 						break;
 						}
 					case 'n': {
-						if (strike1 || strike2){append("</s>");}
-						if (italic){append("</em>");}
-						if (bold){append("</b>");}
-						if (note){append("</acronym>");}
-						if (ubar){append("</u>");}
-						append("<br>");
+						if (strike1 || strike2)index2+=sprintf(output+index2,"</s>");
+						if (italic)index2+=sprintf(output+index2,"</em>");
+						if (bold)index2+=sprintf(output+index2,"</b>");
+						if (note)index2+=sprintf(output+index2,"</acronym>");
+						if (ubar)index2+=sprintf(output+index2,"</u>");
+						index2+=sprintf(output+index2,"<br>");
 						index++; 
+						if(txt[index] == '='){
+							short paragraph = 0,paragraph2 = 0;
+							while(txt[index++] == '=')paragraph++;
+							UntilNewLine(i);
+							int nextline = i;
+							while(txt[--i] != '=');
+							while(txt[i--] == '=')paragraph2++;
+							if(paragraph == paragraph2){ //문단 처리. 
+							ParagraphIndex[paragraph-1]++;
+							index2 += sprintf(output+index2,"<h%d>",paragraph2);
+							while(paragraph<=10)ParagraphIndex[paragraph++] = 0;
+							paragraph = 0;
+							//printf("%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.\r",ParagraphIndex[0],ParagraphIndex[1],ParagraphIndex[2],ParagraphIndex[3],ParagraphIndex[4],ParagraphIndex[5],ParagraphIndex[6],ParagraphIndex[7],ParagraphIndex[8],ParagraphIndex[9]);
+							while(ParagraphIndex[paragraph] == 0)paragraph++;
+							while(paragraph<12 && ParagraphIndex[paragraph] != 0 )index2 += sprintf(output+index2,"%d.",ParagraphIndex[paragraph++]); //0 is false
+							index2 = parsetext((string){txt+index,i-index-1},output,index2,ParagraphIndex);
+							index2 += sprintf(output+index2,"</h%d>",paragraph2);
+							index = nextline;
+							}
+							else index -= paragraph;
+							
+						}
 						break;
 					}
 					case 't': output[index2++] = '\t'; index++; break;
@@ -121,27 +151,27 @@ int parsetext(string text, unsigned char* output, int index2v){
 						}
 						if(end != -1){
 							if (bar != -1){
-								append("<a href=\"entry://");
-								index2 = parsetext((string){txt+index,bar-index-1},output,index2); //0부터니까 -1 
-								append("\">");
-								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2);
-								append("</a>");
+								index2+=sprintf(output+index2,"<a href=\"entry://");
+								index2 = parsetext((string){txt+index,bar-index-1},output,index2,ParagraphIndex); //0부터니까 -1 
+								index2+=sprintf(output+index2,"\">");
+								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2,ParagraphIndex);
+								index2+=sprintf(output+index2,"</a>");
 							}
 							else{
-								append("<a href=\"entry://");
+								index2+=sprintf(output+index2,"<a href=\"entry://");
 								//i = index2;
-								index2 =  parsetext((string){txt+index,end-index-1},output,index2); //0부터니까 -1 
-								append("\">");
+								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex); //0부터니까 -1 
+								index2+=sprintf(output+index2,"\">");
 								/*
 								<a href=\"entry://"bla">bla</a>
 								                   ^    ^
 								                   i    index2
 												    
 								*/
-								index2 =  parsetext((string){txt+index,end-index-1},output,index2);
+								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex);
 								//memcpy(output+index2,output+i,index2-i-4);
 								//index2 += index2-i-4;
-								append("</a>");
+								index2+=sprintf(output+index2,"</a>");
 							}
 							index = end + 2;
 							break;
@@ -150,11 +180,41 @@ int parsetext(string text, unsigned char* output, int index2v){
 					}
 					case '*':{
 						if (!note){
-							append("<acronym title=\"#\">");
+							index2+=sprintf(output+index2,"<acronym title=\"#\">");
 							note = true;
 							index += 2;
 						}
 						else {Plain}
+						break;
+					}
+					case 'a':{
+						if(strncmp(&txt[index+1],"anchor",6) == 0){
+							index += 7;
+							if(txt[index] == ' ')index++;
+							index++; //(*<-여기 
+							index2 += sprintf(output+index2,"<a name=\"");
+							while(txt[index] != ')')parsetitle(txt,index,index2)
+							index2 += sprintf(output+index2,"\"></a>");
+							i = index;
+							while(txt[index] != ']' && (index - i) < 5)index++;
+							index++;
+						}
+						else output[index2++] = txt[index++];
+						break;
+					}
+					case 'i':{
+						if(strncmp(&txt[index+1],"include",7) == 0){
+							index += 8;
+							if(txt[index] == ' ')index++;
+							index++; //(*<-여기 
+							index2 += sprintf(output+index2,"<div w3-include-html=\"entry://");
+							while(txt[index] != ')')parsetitle(txt,index,index2)
+							index2 += sprintf(output+index2,"\"></div>");
+							i = index;
+							while(txt[index] != ']' && (index - i) < 5)index++;
+							index++;
+						}
+						else output[index2++] = txt[index++];
 						break;
 					}
 					default: Plain
@@ -179,7 +239,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 			}
 			case ']':{
 				if(note){
-					append("</acronym>");
+					index2+=sprintf(output+index2,"</acronym>");
 					note = !note; 
 					index++;
 				}
@@ -196,16 +256,16 @@ int parsetext(string text, unsigned char* output, int index2v){
 						}
 						else{
 							index++;
-							append("<font color=\"");
+							index2+=sprintf(output+index2,"<font color=\"");
 							while(txt[index] != ' ') output[index2++] = txt[index++];
-							append("\">");
+							index2+=sprintf(output+index2,"\">");
 							color = true;
 						}
 					}
 					else if(txt[index] == '+'){
-						append("<font size=\"");
+						index2+=sprintf(output+index2,"<font size=\"");
 						output[index2++] = txt[index++];
-						append("\">");
+						index2+=sprintf(output+index2,"\">");
 						size = true;
 					}
 					else {Plain}
@@ -217,20 +277,20 @@ int parsetext(string text, unsigned char* output, int index2v){
 				if(txt[index+1] == '}' && txt[index+2] == '}'){
 					index += 3;
 					if(color) {
-						append("</font>");
+						index2+=sprintf(output+index2,"</font>");
 						color = false;
 					}
 					else if(size) {
-						append("</font>");
+						index2+=sprintf(output+index2,"</font>");
 						size = false;
 					}
 				}
 				else {Plain}
 				break;
 			}
-			case '<':append("&lt;"); index++; break;
-			case '>':append("&gt;"); index++; break;
-			case '&':append("&quot;"); index++; break;
+			case '<':index2+=sprintf(output+index2,"&lt;"); index++; break;
+			case '>':index2+=sprintf(output+index2,"&gt;"); index++; break;
+			case '&':index2+=sprintf(output+index2,"&quot;"); index++; break;
 			case '|':{
 				if(txt[index+1] == '|'){
 					int cols=0, next, start;
@@ -246,7 +306,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 								line = true;
 							}
 							index2 += sprintf(output+index2,"<td colspan=\"%d\">",cols);
-							index2 = parsetext((string){txt+start,next-start-1},output,index2);
+							index2 = parsetext((string){txt+start,next-start-1},output,index2,ParagraphIndex);
 							index2 += sprintf(output+index2,"</td>");
 							checknext:;
 							index = next;
@@ -295,6 +355,7 @@ int parsetext(string text, unsigned char* output, int index2v){
 
 int parse(int Nspace, string title, string text, unsigned char* opt){
 	int index,index2;
+	short ParagraphIndex[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 	unsigned char* ttl = (char*)title.p;
 	unsigned char* output = opt;
 	// namespace -> title
@@ -316,8 +377,8 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 		index2 += sprintf(output+index2,"\">Redirect</a>");
 	}
 	else {
-		index2 += sprintf(output+index2,"<head><link rel=\"style\" type=\"text/css\" href=\"qewin.css\"></head>");
-		index2 = parsetext(text,opt,index2);
+		index2 += sprintf(output+index2,"<head><link rel=\"stylesheet\" type=\"text/css\" href=\"qewin.css\" /></head>");
+		index2 = parsetext(text,opt,index2,ParagraphIndex);
 	}
 	strncpy(opt+index2,"\n</>\n",5);
 	return index2+5; // 작성한 위치 다음을 반환한다. 
