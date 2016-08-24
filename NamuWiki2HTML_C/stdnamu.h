@@ -121,7 +121,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							//printf("%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.\r",ParagraphIndex[0],ParagraphIndex[1],ParagraphIndex[2],ParagraphIndex[3],ParagraphIndex[4],ParagraphIndex[5],ParagraphIndex[6],ParagraphIndex[7],ParagraphIndex[8],ParagraphIndex[9]);
 							while(ParagraphIndex[paragraph] == 0)paragraph++;
 							while(paragraph<12 && ParagraphIndex[paragraph] != 0 )index2 += sprintf(output+index2,"%d.",ParagraphIndex[paragraph++]); //0 is false
-							index2 = parsetext((string){txt+index,i-index-1},output,index2,ParagraphIndex);
+							index2 = parsetext((string){txt+index,i-index},output,index2,ParagraphIndex);
 							index2 += sprintf(output+index2,"</h%d>",paragraph2);
 							index = nextline;
 							//printf("%c%c%c\n",txt[index],txt[index+1],txt[index+2]);
@@ -208,11 +208,12 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							index += 8;
 							if(txt[index] == ' ')index++;
 							index++; //(*<-¿©±â 
-							index2 += sprintf(output+index2,"<div w3-include-html=\"entry://");
-							while(txt[index] != ')')parsetitle(txt,index,index2)
+							index2 += sprintf(output+index2,"<div w3-include-html=\"test.html"); //entry:// 
+							//index2 += sprintf(output+index2,"<link rel=\"import\" href=\"");
+							//while(txt[index] != ')' && txt[index] != ',')parsetitle(txt,index,index2)
 							index2 += sprintf(output+index2,"\"></div>");
-							i = index;
-							while(txt[index] != ']' && (index - i) < 5)index++;
+							//index2 += sprintf(output+index2,"\" />");
+							while(txt[index] != ']')index++;
 							index++;
 						}
 						else output[index2++] = txt[index++];
@@ -252,7 +253,8 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 					index += 3;
 					if(txt[index] == '#'){
 						if(strncmp(&txt[index],"#!html",6) == 0){
-							while(strncmp(&txt[++index],"}}}",3) != 0);
+							index +=6;
+							while(strncmp(&txt[index],"}}}",3) != 0 && index<text.len)parsetitle(txt,index,index2)
 							index += 3;
 						}
 						else{
@@ -270,7 +272,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						size = true;
 					}
 					else {
-						while(txt[index] != '}' && txt[index+1] != '}' && txt[index+2] != '}' && index<text.len)parsetitle(txt,index,index2)
+						while(strncmp(&txt[index],"}}}",3) != 0 && index<text.len)parsetitle(txt,index,index2)
 						index += 3;
 					}
 				}
