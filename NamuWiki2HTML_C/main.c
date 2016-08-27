@@ -60,7 +60,7 @@ void *workthread(void *input){ //실제로는 cstring받게 함.
 		while(document[ttlend++] != '\"') while(document[ttlend++] != ',');
 		txtend = io->Ip[i+1] - io->Ip[i];
 		while( document[txtend--] != '[' ) while( document[txtend--] != '\"' );
-		index += parse((int)(document[12]-48),title,text, Cdoc + index);
+		index += parse((int)(document[12]-48),title,text, Cdoc + index); 
 	}
 	io->Olen[Tnum] = index;
 	return (void *)Tnum;

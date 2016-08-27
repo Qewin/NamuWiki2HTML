@@ -79,11 +79,13 @@ int nexttable(string text, int index){
 				break; \
 			}
 
-int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIndex){
+int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIndex,int* notenum){
 	int index2 = index2v, index = 0, i;
 	bool strike1 = false, strike2 = false, italic = false, bold = false;
 	bool sub = false, sup = false, ubar = false;
 	bool color = false, size = false, note = false;
+	//int index2c = 0, index3 = 0; //index2 캐시 / 주석index = index3. 
+	//unsigned char notecache[100000]; //주석용. 
 	unsigned char* txt = (char*)text.p;
 	while(index<=text.len){
 		switch(txt[index]){
@@ -121,7 +123,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							//printf("%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.\r",ParagraphIndex[0],ParagraphIndex[1],ParagraphIndex[2],ParagraphIndex[3],ParagraphIndex[4],ParagraphIndex[5],ParagraphIndex[6],ParagraphIndex[7],ParagraphIndex[8],ParagraphIndex[9]);
 							while(ParagraphIndex[paragraph] == 0)paragraph++;
 							while(paragraph<12 && ParagraphIndex[paragraph] != 0 )index2 += sprintf(output+index2,"%d.",ParagraphIndex[paragraph++]); //0 is false
-							index2 = parsetext((string){txt+index,i-index},output,index2,ParagraphIndex);
+							index2 = parsetext((string){txt+index,i-index},output,index2,ParagraphIndex,notenum);
 							index2 += sprintf(output+index2,"</h%d>",paragraph2);
 							index = nextline;
 							//printf("%c%c%c\n",txt[index],txt[index+1],txt[index+2]);
@@ -153,15 +155,15 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						if(end != -1){
 							if (bar != -1){
 								index2+=sprintf(output+index2,"<a href=\"entry://");
-								index2 = parsetext((string){txt+index,bar-index-1},output,index2,ParagraphIndex); //0부터니까 -1 
+								index2 = parsetext((string){txt+index,bar-index-1},output,index2,ParagraphIndex,notenum); //0부터니까 -1 
 								index2+=sprintf(output+index2,"\">");
-								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2,ParagraphIndex);
+								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2,ParagraphIndex,notenum);
 								index2+=sprintf(output+index2,"</a>");
 							}
 							else{
 								index2+=sprintf(output+index2,"<a href=\"entry://");
 								//i = index2;
-								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex); //0부터니까 -1 
+								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex,notenum); //0부터니까 -1 
 								index2+=sprintf(output+index2,"\">");
 								/*
 								<a href=\"entry://"bla">bla</a>
@@ -169,7 +171,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 								                   i    index2
 												    
 								*/
-								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex);
+								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex,notenum);
 								//memcpy(output+index2,output+i,index2-i-4);
 								//index2 += index2-i-4;
 								index2+=sprintf(output+index2,"</a>");
@@ -181,8 +183,10 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 					}
 					case '*':{
 						if (!note){
-							index2+=sprintf(output+index2,"<acronym title=\"#\">");
+							//index2+=sprintf(output+index2,"<a href=\"#note-%d\">[%d]</a><p id=\"note-%d\">,*notenum,*notenum,*notenum);
+							index2+=sprintf(output+index2,"<span class=\"open\" tabindex=\"0\">[open%d]</span><p class=\"note\">",*notenum);
 							note = true;
+							(*notenum)++;
 							index += 2;
 						}
 						else {Plain}
@@ -208,10 +212,13 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							index += 8;
 							if(txt[index] == ' ')index++;
 							index++; //(*<-여기 
-							index2 += sprintf(output+index2,"<div w3-include-html=\"test.html"); //entry:// 
+							index2 += sprintf(output+index2,"<a href=\""); //entry:// 
 							//index2 += sprintf(output+index2,"<link rel=\"import\" href=\"");
-							//while(txt[index] != ')' && txt[index] != ',')parsetitle(txt,index,index2)
-							index2 += sprintf(output+index2,"\"></div>");
+							while(txt[index] != ')' && txt[index] != ',')parsetitle(txt,index,index2)
+							index2 += sprintf(output+index2,"\">");
+							while(txt[index] != ')' && txt[index] != ',')parsetitle(txt,index,index2)
+							index2 += sprintf(output+index2,"</a>");
+							//index2 += sprintf(output+index2,"\"></div>");
 							//index2 += sprintf(output+index2,"\" />");
 							while(txt[index] != ']')index++;
 							index++;
@@ -241,7 +248,8 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 			}
 			case ']':{
 				if(note){
-					index2+=sprintf(output+index2,"</acronym>");
+					//index2+=sprintf(output+index2,"</p>");
+					index2+=sprintf(output+index2,"<span class=\"close\" tabindex=\"0\">[close]</span></p>");
 					note = !note; 
 					index++;
 				}
@@ -303,7 +311,41 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 					int count = 0;
 					for(start=index;txt[start]=='|'&&txt[start+1]=='|';start+=2)cols++;
 					if(0 < (next = nexttable(text,start)) ){
-						index2 += sprintf(output+index2,"<table>");
+						if(txt[start] == ' ')start++;
+						if(strncmp(&txt[start],"<table ",7) == 0){
+							index2 += sprintf(output+index2,"<table style=\"");
+							do{
+								start += 7;
+								if(strncmp(&txt[start],"align=",6) == 0){
+									start +=6;
+									index2 += sprintf(output+index2,"text-align: ");
+								}
+								else if(strncmp(&txt[start],"bgcolor=",8) == 0){
+									start +=8;
+									index2 += sprintf(output+index2,"background-color: ");
+								}
+								else if(strncmp(&txt[start],"bordercolor=",12) == 0){
+									start +=12;
+									index2 += sprintf(output+index2,"border-color: ");
+								}
+								else if(strncmp(&txt[start],"width=",6) == 0){
+									start +=6;
+									index2 += sprintf(output+index2,"width: ");
+								}
+								else{
+									while(txt[start] != '>')start++;
+									start++;
+									if(txt[start] == ' ')start++;
+									continue;
+								}
+								while(txt[start] != '>')output[index2++] = txt[start++];
+								output[index2++] = ';';
+								start++;
+								if(txt[start] == ' ')start++;
+							}while(strncmp(&txt[start],"<table ",7) == 0);
+							index2 += sprintf(output+index2,"\">");
+						}
+						else index2 += sprintf(output+index2,"<table>");
 						bool line = false;
 						while(true){
 							//parse prop
@@ -311,8 +353,66 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 								index2 += sprintf(output+index2,"<tr>");
 								line = true;
 							}
-							index2 += sprintf(output+index2,"<td colspan=\"%d\">",cols);
-							index2 = parsetext((string){txt+start,next-start-1},output,index2,ParagraphIndex);
+							if(cols>1) index2 += sprintf(output+index2,"<td colspan=\"%d\"",cols);
+							else index2 += sprintf(output+index2,"<td");
+							
+							if(txt[start] == '<'){
+								index2 += sprintf(output+index2," style=\"");
+								do{
+									start++;
+									if(strncmp(&txt[start],"bgcolor=",8) == 0){
+										start +=8;
+										index2 += sprintf(output+index2,"background-color: ");
+									}
+									else if(strncmp(&txt[start],"width=",6) == 0){
+										start +=6;
+										index2 += sprintf(output+index2,"width: ");
+									}
+									else if(strncmp(&txt[start],"height=",7) == 0){
+										start +=7;
+										index2 += sprintf(output+index2,"height: ");
+									}
+									else if(txt[start] == '('){
+										start++;
+										index2 += sprintf(output+index2,"text-align: left");
+									} 
+									else if(txt[start] == ':'){
+										start++;
+										index2 += sprintf(output+index2,"text-align: center");
+									} 
+									else if(txt[start] == ')'){
+										start++;
+										index2 += sprintf(output+index2,"text-align: right");
+									}
+									else if(strncmp(&txt[start],"^|",2) == 0){
+										index2 += sprintf(output+index2,"vertical-align: top");
+										while(txt[start] != '>')start++;
+									}
+									else if(txt[start] == '|'){
+										index2 += sprintf(output+index2,"vertical-align: middle");
+										while(txt[start] != '>')start++;
+									}
+									else if(strncmp(&txt[start],"v|",2) == 0){
+										index2 += sprintf(output+index2,"vertical-align: bottom");
+										while(txt[start] != '>')start++;
+									}
+									else{
+										while(txt[start] != '>')start++;
+										start++;
+										if(txt[start] == ' ')start++;
+										continue;
+									}
+									while(txt[start] != '>')output[index2++] = txt[start++];
+									output[index2++] = ';';
+									start++;
+									if(txt[start] == ' ')start++;
+								}while(txt[start] == '<');
+								index2 += sprintf(output+index2,"\">");
+							}
+							else output[index2++] = '>';
+							
+							
+							index2 = parsetext((string){txt+start,next-start-1},output,index2,ParagraphIndex,notenum);
 							index2 += sprintf(output+index2,"</td>");
 							checknext:;
 							index = next;
@@ -399,6 +499,19 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 			output[index2++] = ':'; //이미지:
 			break;
 		}
+		case 4:{
+			output[index2++] = 0xEC;
+			output[index2++] = 0x82;
+			output[index2++] = 0xAC;
+			output[index2++] = 0xEC;
+			output[index2++] = 0x9A;
+			output[index2++] = 0xA9;
+			output[index2++] = 0xEC;
+			output[index2++] = 0x9E;
+			output[index2++] = 0x90;
+			output[index2++] = ':'; //사용자:
+			break;
+		}
 		case 6: {
 			output[index2++] = 0xEB;
 			output[index2++] = 0x82;
@@ -429,7 +542,8 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	}
 	else {
 		index2 += sprintf(output+index2,"<head><link rel=\"stylesheet\" type=\"text/css\" href=\"qewin.css\" /></head>");
-		index2 = parsetext(text,opt,index2,ParagraphIndex);
+		int notenum = 1;
+		index2 = parsetext(text,opt,index2,ParagraphIndex,&notenum);
 	}
 	strncpy(opt+index2,"\n</>\n",5);
 	return index2+5; // 작성한 위치 다음을 반환한다. 
