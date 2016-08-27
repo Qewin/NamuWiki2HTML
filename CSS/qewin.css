@@ -1,0 +1,41 @@
+<style>
+table {
+border-collapse: collapse;
+width: 100%;
+}
+
+tr:nth-child(even) {
+background-color: #f9fcfc
+}
+
+table,th,td{
+border: 1px solid black;
+}
+
+s{
+color: grey;
+}
+
+acronym,abbr{
+color: grey;
+}
+
+h1,h2,h3,h4,h5,h6{
+color: midnightblue;
+}
+.note {
+  display: none;
+}
+.open,.close{
+  display: inline;
+  color: skyblue;
+}
+.close:focus ~ .note {
+  display: none;
+}
+.open:focus ~ .note {
+  display: inline;
+}
+
+
+</style>
