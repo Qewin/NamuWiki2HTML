@@ -141,8 +141,9 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							while(txt[index++] == '=')paragraph++;
 							UntilNewLine(i);
 							int nextline = i;
+							i--;
 							while(txt[i] != '='){
-								if(txt[i] !=' ' && (txt[i] != 't' || txt[i-1] != '\\')) goto failed;
+								if(txt[i] !=' ') goto failed;
 								i--;
 							}
 							while(txt[i--] == '=')paragraph2++;
@@ -169,7 +170,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							}
 							else {
 								failed:;
-								index -= paragraph;
+								index -= (paragraph+1);
 							}
 							
 						}
@@ -186,11 +187,11 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							while(txt[index++] == '>')count++;
 							//
 							while(count>quotelvl){
-								index2+=sprintf(output+index2,"<table class=\"quote\">");
+								index2+=sprintf(output+index2,"<table class=\"quote\"><td style=\"border-style:none;\">");
 								quotelvl++;
 							}
 							while(count<quotelvl){
-								index2+=sprintf(output+index2,"</table>");
+								index2+=sprintf(output+index2,"</td></table>");
 								quotelvl--;
 							}
 						}
