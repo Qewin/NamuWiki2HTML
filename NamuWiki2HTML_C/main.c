@@ -61,7 +61,7 @@ void *workthread(void *input){ //실제로는 cstring받게 함.
 		txtend = io->Ip[i+1] - io->Ip[i];
 		while( document[txtend--] != '[' ) while( document[txtend--] != '\"' );
 		string DocIndex;
-		DocIndex.p = (io->Cdoc[Tnum] + TCsize - 50000);
+		DocIndex.p = (io->Cdoc[Tnum] + TCsize - 100000);
 		DocIndex.len = 0; //마지막 20kB를 목차용으로 
 		index += parse((int)(document[12]-48),title,text, &DocIndex, Cdoc + index); 
 	}
@@ -83,7 +83,7 @@ int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	}
 	return 0;
 }
-int sworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
+/* int sworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	printf("Converting[SingleThread]\r");
 	
 	int i,index = 0,ttlend,txtend;
@@ -96,14 +96,14 @@ int sworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 		txtend = doc.p[i+1] - doc.p[i];
 		while( document[txtend--] != '[' ) while( document[txtend--] != '\"' );
 		string DocIndex;
-		DocIndex.p = (Cdocv[0] + TCsize - 50000);
+		DocIndex.p = (Cdocv[0] + TCsize - 100000);
 		DocIndex.len = 0; //마지막 20kB를 목차용으로
 		index += parse((int)(document[12]-48),title,text,&DocIndex,Cdocv[0] + index);
 	}
 	fwrite(Cdocv[0],sizeof(char),index,outfile); //index는 구조상 범위 밖까지 포함되므로 index 제외. 0부터 시작. 
 	return 0;
 }
-
+*/
 int JsonIO(){
 	FILE *input;
 	FILE *outfile;
