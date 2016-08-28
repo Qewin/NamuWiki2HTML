@@ -15,7 +15,7 @@ typedef struct combinediostring{
 #define CORE 4 //4
 #define DocS 12500*CORE*MUL
 #define Csize  CORE*MUL*5*1000*1000
-#define TCsize (int)(Csize/CORE*1.1))
+#define TCsize ((int)(Csize/CORE*1.1))
 
 int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document, unsigned char *oldend){ //[1~] : 각 문서의 포인터 반환. [0] : 원래 문서의 포인터가 들어 있음.(2번째 로딩부터는 사용.)
 	printf("Reading             \r");
@@ -60,7 +60,10 @@ void *workthread(void *input){ //실제로는 cstring받게 함.
 		while(document[ttlend++] != '\"') while(document[ttlend++] != ',');
 		txtend = io->Ip[i+1] - io->Ip[i];
 		while( document[txtend--] != '[' ) while( document[txtend--] != '\"' );
-		index += parse((int)(document[12]-48),title,text, Cdoc + index); 
+		string DocIndex;
+		DocIndex.p = (io->Cdoc[Tnum] + TCsize - 50000);
+		DocIndex.len = 0; //마지막 20kB를 목차용으로 
+		index += parse((int)(document[12]-48),title,text, &DocIndex, Cdoc + index); 
 	}
 	io->Olen[Tnum] = index;
 	return (void *)Tnum;
@@ -76,7 +79,6 @@ int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	for(i=0;i<CORE;i++) pthread_create(&threads[i], NULL, &workthread, &args);
 	for(i=0;i<CORE;i++) {
 		pthread_join(threads[i],(void **) &outlen);
-		//for(j=0;j<args.Olen[outlen];j++)putc(Cdocv[outlen][j],outfile);//olen은 구조상 범위 밖까지 포함되므로 outlen 제외. 
 		fwrite(Cdocv[outlen],sizeof(char),args.Olen[outlen],outfile); //olen은 구조상 범위 밖까지 포함되므로 outlen 제외. 0부터 시작. 
 	}
 	return 0;
@@ -93,7 +95,10 @@ int sworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 		while(document[ttlend++] != '\"') while(document[ttlend++] != ',');
 		txtend = doc.p[i+1] - doc.p[i];
 		while( document[txtend--] != '[' ) while( document[txtend--] != '\"' );
-		index += parse((int)(document[12]-48),title,text, Cdocv[0] + index);
+		string DocIndex;
+		DocIndex.p = (Cdocv[0] + TCsize - 50000);
+		DocIndex.len = 0; //마지막 20kB를 목차용으로
+		index += parse((int)(document[12]-48),title,text,&DocIndex,Cdocv[0] + index);
 	}
 	fwrite(Cdocv[0],sizeof(char),index,outfile); //index는 구조상 범위 밖까지 포함되므로 index 제외. 0부터 시작. 
 	return 0;
@@ -111,7 +116,7 @@ int JsonIO(){
 	if( (cache = (unsigned char *)malloc(Csize)) == NULL) return 2;
 	if( (document = (unsigned char **)calloc(DocS,sizeof(unsigned char*))) == NULL) return 2;
 	int i;
-	for(i=0; i<CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc(TCsize) == NULL) return 2;
+	for(i=0; i<CORE; i++) if( (Cdoc[i] = (unsigned char *)malloc(TCsize)) == NULL) return 2;
 	printf("[Main]Threads:%d\n",CORE);
 	
 	doclen = ReadJSON(input,cache,document,cache);

@@ -79,11 +79,12 @@ int nexttable(string text, int index){
 				break; \
 			}
 
-int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIndex,int* notenum){
+int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIndex,int* notenum,string* DocIndex){
 	int index2 = index2v, index = 0, i;
 	bool strike1 = false, strike2 = false, italic = false, bold = false;
 	bool sub = false, sup = false, ubar = false;
 	bool color = false, size = false, note = false;
+	int quotelvl = 0;
 	//int index2c = 0, index3 = 0; //index2 캐시 / 주석index = index3. 
 	//unsigned char notecache[100000]; //주석용. 
 	unsigned char* txt = (char*)text.p;
@@ -101,11 +102,38 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						break;
 						}
 					case 'n': {
-						if (strike1 || strike2)index2+=sprintf(output+index2,"</s>");
-						if (italic)index2+=sprintf(output+index2,"</em>");
-						if (bold)index2+=sprintf(output+index2,"</b>");
-						if (note)index2+=sprintf(output+index2,"</acronym>");
-						if (ubar)index2+=sprintf(output+index2,"</u>");
+						if (strike1){
+							index2+=sprintf(output+index2,"</s>");
+							strike1 = false;
+						}
+						if (strike2){
+							index2+=sprintf(output+index2,"</s>");
+							strike2 = false;
+						}
+						if (italic){
+							index2+=sprintf(output+index2,"</em>");
+							italic = false;
+						}
+						if (bold){
+							index2+=sprintf(output+index2,"</b>");
+							bold = false;
+						}
+						if (note){
+							index2+=sprintf(output+index2,"<span class=\"close\" tabindex=\"0\">[close]</span></p>");
+							note = false;
+						}
+						if (ubar){
+							index2+=sprintf(output+index2,"</u>");
+							ubar = false;
+						}
+						if (sub){
+							index2+=sprintf(output+index2,"</sub>");
+							sub = false;
+						}
+						if (sup){
+							index2+=sprintf(output+index2,"</sup>");
+							sup = false;
+						}
 						index2+=sprintf(output+index2,"<br>");
 						index++; 
 						if(txt[index] == '='){
@@ -113,23 +141,64 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							while(txt[index++] == '=')paragraph++;
 							UntilNewLine(i);
 							int nextline = i;
-							while(txt[--i] != '=');
+							while(txt[i] != '='){
+								if(txt[i] !=' ' && (txt[i] != 't' || txt[i-1] != '\\')) goto failed;
+								i--;
+							}
 							while(txt[i--] == '=')paragraph2++;
 							if(paragraph == paragraph2){ //문단 처리. 
-							ParagraphIndex[paragraph-1]++;
-							index2 += sprintf(output+index2,"<h%d>",paragraph2);
-							while(paragraph<=10)ParagraphIndex[paragraph++] = 0;
-							paragraph = 0;
-							//printf("%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.\r",ParagraphIndex[0],ParagraphIndex[1],ParagraphIndex[2],ParagraphIndex[3],ParagraphIndex[4],ParagraphIndex[5],ParagraphIndex[6],ParagraphIndex[7],ParagraphIndex[8],ParagraphIndex[9]);
-							while(ParagraphIndex[paragraph] == 0)paragraph++;
-							while(paragraph<12 && ParagraphIndex[paragraph] != 0 )index2 += sprintf(output+index2,"%d.",ParagraphIndex[paragraph++]); //0 is false
-							index2 = parsetext((string){txt+index,i-index},output,index2,ParagraphIndex,notenum);
-							index2 += sprintf(output+index2,"</h%d>",paragraph2);
-							index = nextline;
-							//printf("%c%c%c\n",txt[index],txt[index+1],txt[index+2]);
+								ParagraphIndex[paragraph-1]++;
+								while(paragraph<=10)ParagraphIndex[paragraph++] = 0;
+								
+								unsigned char list[50] = { };
+								int listcount = 0;
+								paragraph = 0;
+								while(ParagraphIndex[paragraph] == 0)paragraph++;
+								while(paragraph<12 && ParagraphIndex[paragraph] != 0 )listcount += sprintf(&list[0]+listcount,"%d.",ParagraphIndex[paragraph++]); //0 is false
+								list[listcount] = '\0';
+								
+								unsigned char listtitle[5000] = { };
+								int LTcount = parsetext((string){txt+index,i-index},&listtitle[0],0,ParagraphIndex,notenum,DocIndex);
+								listtitle[LTcount] =  '\0';
+								//if(LTcount > 5000) printf("\n\n\n\n\n");
+								//printf("%s\t%s\n",list,listtitle);
+								
+								index2 += sprintf(output+index2,"<a href=\"#index\"><h%d><a name=\"%s\"></a>%s%s</h%d></a>",paragraph2,list,list,listtitle,paragraph2);
+								DocIndex->len += sprintf(DocIndex->p + DocIndex->len,"<a href=\"#%s\">%s</a>%s<br>",list,list,listtitle);
+								index = nextline;
 							}
-							else index -= paragraph;
+							else {
+								failed:;
+								index -= paragraph;
+							}
 							
+						}
+						else if(txt[index] == '#' && txt[index+1] == '#'){
+							UntilNewLine(i);
+							index = i;
+						}
+						else if(strncmp(&txt[index],"----",4) == 0){
+							index2+=sprintf(output+index2,"<hr>");
+							while(txt[index] == '-')index++;
+						}
+						else if(txt[index] == '>'){
+							int count = 0;
+							while(txt[index++] == '>')count++;
+							//
+							while(count>quotelvl){
+								index2+=sprintf(output+index2,"<table class=\"quote\">");
+								quotelvl++;
+							}
+							while(count<quotelvl){
+								index2+=sprintf(output+index2,"</table>");
+								quotelvl--;
+							}
+						}
+						else if(quotelvl != 0){
+							while(0<quotelvl){
+								index2+=sprintf(output+index2,"</td></table>");
+								quotelvl--;
+							}	
 						}
 						break;
 					}
@@ -155,15 +224,15 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						if(end != -1){
 							if (bar != -1){
 								index2+=sprintf(output+index2,"<a href=\"entry://");
-								index2 = parsetext((string){txt+index,bar-index-1},output,index2,ParagraphIndex,notenum); //0부터니까 -1 
+								index2 = parsetext((string){txt+index,bar-index-1},output,index2,ParagraphIndex,notenum,DocIndex); //0부터니까 -1 
 								index2+=sprintf(output+index2,"\">");
-								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2,ParagraphIndex,notenum);
+								index2 = parsetext((string){txt+bar+1,end-bar-2},output,index2,ParagraphIndex,notenum,DocIndex);
 								index2+=sprintf(output+index2,"</a>");
 							}
 							else{
 								index2+=sprintf(output+index2,"<a href=\"entry://");
 								//i = index2;
-								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex,notenum); //0부터니까 -1 
+								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex,notenum,DocIndex); //0부터니까 -1 
 								index2+=sprintf(output+index2,"\">");
 								/*
 								<a href=\"entry://"bla">bla</a>
@@ -171,7 +240,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 								                   i    index2
 												    
 								*/
-								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex,notenum);
+								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex,notenum,DocIndex);
 								//memcpy(output+index2,output+i,index2-i-4);
 								//index2 += index2-i-4;
 								index2+=sprintf(output+index2,"</a>");
@@ -226,7 +295,22 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						else output[index2++] = txt[index++];
 						break;
 					}
-					default: Plain
+					case 'B': case 'b': {
+						if(txt[index+1] == 'r' || txt[index+1] == 'R'){
+							index +=3;
+							index2 += sprintf(output+index2,"<br>");
+						}
+						else output[index2++] = txt[index++];
+						break;
+					}
+					default:{
+						if(strncmp(txt+index,"[\\ubaa9\\ucc28]",14) == 0){
+							index2 += sprintf(output+index2,"<a href=\"#index\">[[[INDEX]]]</a>");
+							index += 14;
+							break;
+						}
+						else{Plain}
+					} 
 				}
 				break;
 			}
@@ -412,7 +496,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							else output[index2++] = '>';
 							
 							
-							index2 = parsetext((string){txt+start,next-start-1},output,index2,ParagraphIndex,notenum);
+							index2 = parsetext((string){txt+start,next-start-1},output,index2,ParagraphIndex,notenum,DocIndex);
 							index2 += sprintf(output+index2,"</td>");
 							checknext:;
 							index = next;
@@ -451,7 +535,8 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						index = start;
 					}
 				}
-				Plain
+				else output[index2++] = txt[index++];
+				break;
 			}
 			default: Plain
 		}
@@ -459,7 +544,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 	return (index2);    //strspn 참고 ************************** 
 }
 
-int parse(int Nspace, string title, string text, unsigned char* opt){
+int parse(int Nspace, string title, string text, string* DocIndex, unsigned char* opt){
 	int index,index2;
 	short ParagraphIndex[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 	unsigned char* ttl = (char*)title.p;
@@ -543,7 +628,11 @@ int parse(int Nspace, string title, string text, unsigned char* opt){
 	else {
 		index2 += sprintf(output+index2,"<head><link rel=\"stylesheet\" type=\"text/css\" href=\"qewin.css\" /></head>");
 		int notenum = 1;
-		index2 = parsetext(text,opt,index2,ParagraphIndex,&notenum);
+		DocIndex->len += sprintf(DocIndex->p + DocIndex->len,"<a name=\"index\"></a><table><td>INDEX<br><br>");
+		index2 = parsetext(text,opt,index2,ParagraphIndex,&notenum,DocIndex);
+		DocIndex->len += sprintf(DocIndex->p + DocIndex->len,"</td></table>");
+		memcpy(output+index2,DocIndex->p,DocIndex->len);
+		index2 += DocIndex->len;
 	}
 	strncpy(opt+index2,"\n</>\n",5);
 	return index2+5; // 작성한 위치 다음을 반환한다. 
