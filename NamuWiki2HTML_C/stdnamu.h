@@ -119,7 +119,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							bold = false;
 						}
 						if (note){
-							index2+=sprintf(output+index2,"<span class=\"close\" tabindex=\"0\">[close]</span></p>");
+							index2+=sprintf(output+index2,"</p>");
 							note = false;
 						}
 						if (ubar){
@@ -254,7 +254,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 					case '*':{
 						if (!note){
 							//index2+=sprintf(output+index2,"<a href=\"#note-%d\">[%d]</a><p id=\"note-%d\">,*notenum,*notenum,*notenum);
-							index2+=sprintf(output+index2,"<span class=\"open\" tabindex=\"0\">[open%d]</span><p class=\"note\">",*notenum);
+							index2+=sprintf(output+index2,"<span class=\"open\" tabindex=\"0\">[open%d]</span><p class=\"note\"><span class=\"close\" tabindex=\"0\">[close]</span>",*notenum);
 							note = true;
 							(*notenum)++;
 							index += 2;
@@ -334,7 +334,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 			case ']':{
 				if(note){
 					//index2+=sprintf(output+index2,"</p>");
-					index2+=sprintf(output+index2,"<span class=\"close\" tabindex=\"0\">[close]</span></p>");
+					index2+=sprintf(output+index2,"</p>");
 					note = !note; 
 					index++;
 				}
