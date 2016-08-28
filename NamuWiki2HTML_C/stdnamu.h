@@ -297,8 +297,8 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 						break;
 					}
 					case 'B': case 'b': {
-						if(txt[index+1] == 'r' || txt[index+1] == 'R'){
-							index +=3;
+						if(txt[index+2] == 'r' || txt[index+2] == 'R'){
+							index +=4;
 							index2 += sprintf(output+index2,"<br>");
 						}
 						else output[index2++] = txt[index++];
