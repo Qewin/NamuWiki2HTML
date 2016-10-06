@@ -11,8 +11,8 @@ typedef struct combinediostring{
 	int Olen[16]; 
 }cstring;
 
-#define MUL 10 //10
-#define CORE 4 //4
+#define MUL 40 //10
+#define CORE 1 //4
 #define DocS 12500*CORE*MUL
 #define Csize  CORE*MUL*5*1000*1000
 #define TCsize ((int)(Csize/CORE*1.1))
@@ -47,6 +47,7 @@ int ReadJSON(FILE *input, unsigned char *cache, unsigned char **document, unsign
 
 #define title (string) {&document[24] , ((ttlend-4)-24)}
 #define text (string) {&document[ttlend+7] , ((txtend-17) - (ttlend+7))}
+/*
 void *workthread(void *input){ //실제로는 cstring받게 함. 
 	cstring *io = (cstring*)input;
 	int i,ttlend,txtend,index = 0,Tnum = pthread_self();
@@ -68,7 +69,7 @@ void *workthread(void *input){ //실제로는 cstring받게 함.
 	io->Olen[Tnum] = index;
 	return (void *)Tnum;
 }
-int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
+int mworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	pthread_t threads[CORE];
 	int i,j,outlen;
 	printf("Converting\r");
@@ -83,7 +84,8 @@ int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	}
 	return 0;
 }
-/* int sworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
+*/
+int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	printf("Converting[SingleThread]\r");
 	
 	int i,index = 0,ttlend,txtend;
@@ -103,7 +105,7 @@ int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 	fwrite(Cdocv[0],sizeof(char),index,outfile); //index는 구조상 범위 밖까지 포함되므로 index 제외. 0부터 시작. 
 	return 0;
 }
-*/
+
 int JsonIO(){
 	FILE *input;
 	FILE *outfile;

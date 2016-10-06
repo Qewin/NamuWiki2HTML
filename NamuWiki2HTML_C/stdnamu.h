@@ -21,11 +21,11 @@ typedef struct pointerstring{
 }pstring;
 typedef enum {false, true} bool;
 
-short u2utf8(unsigned char *u, unsigned char* output){
-	unsigned int i , ch = 0;
+unsigned int u2utf8(unsigned char *u, unsigned char* output){
+	register unsigned int i , ch = 0;
 	for(i=0;i<=3;i++) {
-		if ((unsigned int)u[i] <= 57) ch += ((int)u[i] - 48) << ((3-i)*4); // 하나로 합치기 
-		else ch += ((unsigned int)u[i] - 97 + 10) << ((3-i)*4); //10부터 시작이라 10 더함. 그리고 소문자 영문. 
+		if ((unsigned int)u[i] <= 57) ch += ((unsigned int)u[i] - 48) << ((3-i) << 2); // 하나로 합치기 
+		else ch += ((unsigned int)u[i] - 97 + 10) << ((3-i) << 2); //10부터 시작이라 10 더함. 그리고 소문자 영문. 
 	}
 	short index = 0;
     if (ch <= 0x7F) output[index++] = (unsigned char) ch;
@@ -48,7 +48,7 @@ short u2utf8(unsigned char *u, unsigned char* output){
 	
 }
 int nexttable(string text, int index){
-	int i;
+	register unsigned int i;
 	unsigned char *txt = text.p;
 	for(i=index;;i++){
 		if(txt[i] == '|' && txt[i+1] == '|')return i;
