@@ -161,8 +161,6 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 								unsigned char listtitle[5000] = { };
 								int LTcount = parsetext((string){txt+index,i-index},&listtitle[0],0,ParagraphIndex,notenum,DocIndex);
 								listtitle[LTcount] =  '\0';
-								//if(LTcount > 5000) printf("\n\n\n\n\n");
-								//printf("%s\t%s\n",list,listtitle);
 								
 								index2 += sprintf(output+index2,"<a href=\"#index\"><h%d><a name=\"%s\"></a>%s%s</h%d></a>",paragraph2,list,list,listtitle,paragraph2);
 								DocIndex->len += sprintf(DocIndex->p + DocIndex->len,"<a href=\"#%s\">%s</a>%s<br>",list,list,listtitle);
@@ -242,8 +240,6 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 												    
 								*/
 								index2 =  parsetext((string){txt+index,end-index-1},output,index2,ParagraphIndex,notenum,DocIndex);
-								//memcpy(output+index2,output+i,index2-i-4);
-								//index2 += index2-i-4;
 								index2+=sprintf(output+index2,"</a>");
 							}
 							index = end + 2;
@@ -253,7 +249,6 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 					}
 					case '*':{
 						if (!note){
-							//index2+=sprintf(output+index2,"<a href=\"#note-%d\">[%d]</a><p id=\"note-%d\">,*notenum,*notenum,*notenum);
 							index2+=sprintf(output+index2,"<span class=\"open\" tabindex=\"0\">[open%d]</span><p class=\"note\"><span class=\"close\" tabindex=\"0\">[close]</span>[[[",*notenum);
 							note = true;
 							(*notenum)++;
@@ -283,13 +278,10 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							if(txt[index] == ' ')index++;
 							index++; //(*<-여기 
 							index2 += sprintf(output+index2,"<a href=\""); //entry:// 
-							//index2 += sprintf(output+index2,"<link rel=\"import\" href=\"");
 							while(txt[index] != ')' && txt[index] != ',')parsetitle(txt,index,index2)
 							index2 += sprintf(output+index2,"\">");
 							while(txt[index] != ')' && txt[index] != ',')parsetitle(txt,index,index2)
 							index2 += sprintf(output+index2,"</a>");
-							//index2 += sprintf(output+index2,"\"></div>");
-							//index2 += sprintf(output+index2,"\" />");
 							while(txt[index] != ']')index++;
 							index++;
 						}
@@ -401,28 +393,27 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							index2 += sprintf(output+index2,"<table style=\"");
 							do{
 								start += 7;
-								if(strncmp(&txt[start],"align=",6) == 0){
-									start +=6;
-									index2 += sprintf(output+index2,"text-align: ");
-								}
-								else if(strncmp(&txt[start],"bgcolor=",8) == 0){
-									start +=8;
-									index2 += sprintf(output+index2,"background-color: ");
-								}
-								else if(strncmp(&txt[start],"bordercolor=",12) == 0){
-									start +=12;
-									index2 += sprintf(output+index2,"border-color: ");
-								}
-								else if(strncmp(&txt[start],"width=",6) == 0){
-									start +=6;
-									index2 += sprintf(output+index2,"width: ");
-								}
-								else{
-									while(txt[start] != '>')start++;
-									start++;
-									if(txt[start] == ' ')start++;
-									continue;
-								}
+								
+								static unsigned char toptions[][2][20] = {
+									{"align=","text-align: "},
+									{"bgcolor=","background-color: "},
+									{"bordercolor=","border-color: "},
+									{"width=","width: "},
+									{"\0","\0"}};
+								register unsigned int j;
+									for(j=0; toptions[j][0][0] != '\0'; j++){
+										if(strncmp(&txt[start],toptions[j][0],strlen(toptions[j][0])) == 0){
+											start += strlen(toptions[j][0]);
+											index2 += sprintf(output+index2,toptions[j][1]);
+											goto founda;
+										}
+									}
+								while(txt[start] != '>')start++;
+								start++;
+								if(txt[start] == ' ')start++;
+								continue;
+								founda:
+								
 								while(txt[start] != '>')output[index2++] = txt[start++];
 								output[index2++] = ';';
 								start++;
@@ -445,48 +436,32 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 								index2 += sprintf(output+index2," style=\"");
 								do{
 									start++;
-									if(strncmp(&txt[start],"bgcolor=",8) == 0){
-										start +=8;
-										index2 += sprintf(output+index2,"background-color: ");
+									static unsigned char options[][2][30] = {
+									{"bgcolor=","background-color: "},
+									{"width=","width: "},
+									{"height=","height: "},
+									{"(","text-align: left"},
+									{":","text-align: center"},
+									{")","text-align: right"},
+									{"^|","vertical-align: top"},
+									{"|","vertical-align: middle"},
+									{"v|","vertical-align: bottom"},
+									{"\0","\0"}};
+									
+									register unsigned int j;
+									for(j=0; options[j][0][0] != '\0'; j++){
+										if(strncmp(&txt[start],options[j][0],strlen(options[j][0])) == 0){
+											start += strlen(options[j][0]);
+											index2 += sprintf(output+index2,options[j][1]);
+											goto foundb;
+										}
 									}
-									else if(strncmp(&txt[start],"width=",6) == 0){
-										start +=6;
-										index2 += sprintf(output+index2,"width: ");
-									}
-									else if(strncmp(&txt[start],"height=",7) == 0){
-										start +=7;
-										index2 += sprintf(output+index2,"height: ");
-									}
-									else if(txt[start] == '('){
-										start++;
-										index2 += sprintf(output+index2,"text-align: left");
-									} 
-									else if(txt[start] == ':'){
-										start++;
-										index2 += sprintf(output+index2,"text-align: center");
-									} 
-									else if(txt[start] == ')'){
-										start++;
-										index2 += sprintf(output+index2,"text-align: right");
-									}
-									else if(strncmp(&txt[start],"^|",2) == 0){
-										index2 += sprintf(output+index2,"vertical-align: top");
-										while(txt[start] != '>')start++;
-									}
-									else if(txt[start] == '|'){
-										index2 += sprintf(output+index2,"vertical-align: middle");
-										while(txt[start] != '>')start++;
-									}
-									else if(strncmp(&txt[start],"v|",2) == 0){
-										index2 += sprintf(output+index2,"vertical-align: bottom");
-										while(txt[start] != '>')start++;
-									}
-									else{
-										while(txt[start] != '>')start++;
-										start++;
-										if(txt[start] == ' ')start++;
-										continue;
-									}
+									while(txt[start] != '>')start++;
+									start++;
+									if(txt[start] == ' ')start++;
+									continue;
+									foundb:
+									
 									while(txt[start] != '>')output[index2++] = txt[start++];
 									output[index2++] = ';';
 									start++;
@@ -554,68 +529,17 @@ int parse(int Nspace, string title, string text, string* DocIndex, unsigned char
 	index2 = 0; //output index
 	index =0; //input index
 	int i;
-	switch(Nspace){
-		case 1:{
-			output[index2++] = 0xED;
-			output[index2++] = 0x8B;
-			output[index2++] = 0x80;
-			output[index2++] = ':'; //틀: 
-			break;
-		}
-		case 2:{
-			output[index2++] = 0xEB;
-			output[index2++] = 0xB6;
-			output[index2++] = 0x84;
-			output[index2++] = 0xEB;
-			output[index2++] = 0xA5;
-			output[index2++] = 0x98;
-			output[index2++] = ':'; //분류: 
-			break;
-		}
-		case 3:{
-			output[index2++] = 0xEC;
-			output[index2++] = 0x9D;
-			output[index2++] = 0xB4;
-			output[index2++] = 0xEB;
-			output[index2++] = 0xAF;
-			output[index2++] = 0xB8;
-			output[index2++] = 0xEC;
-			output[index2++] = 0xA7;
-			output[index2++] = 0x80;
-			output[index2++] = ':'; //이미지:
-			break;
-		}
-		case 4:{
-			output[index2++] = 0xEC;
-			output[index2++] = 0x82;
-			output[index2++] = 0xAC;
-			output[index2++] = 0xEC;
-			output[index2++] = 0x9A;
-			output[index2++] = 0xA9;
-			output[index2++] = 0xEC;
-			output[index2++] = 0x9E;
-			output[index2++] = 0x90;
-			output[index2++] = ':'; //사용자:
-			break;
-		}
-		case 6: {
-			output[index2++] = 0xEB;
-			output[index2++] = 0x82;
-			output[index2++] = 0x98;
-			output[index2++] = 0xEB;
-			output[index2++] = 0xAC;
-			output[index2++] = 0xB4;
-			output[index2++] = 0xEC;
-			output[index2++] = 0x9C;
-			output[index2++] = 0x84;
-			output[index2++] = 0xED;
-			output[index2++] = 0x82;
-			output[index2++] = 0xA4;
-			output[index2++] = ':'; //나무위키: 
-			break;
-		}
-		default: break;
-	}
+	static unsigned char name_space[][] = {
+		{""}, //0
+		{0xED,0x8B,0x80,':'}, //1 -> 틀: 
+		{0xEB,0xB6,0x84,0xEB,0xA5,0x98,':'}, //2 -> 분류: 
+		{0xEC,0x9D,0xB4,0xEB,0xAF,0xB8,0xEC,0xA7,0x80,':'}, //3-> 이미지 :
+		{0xEC,0x82,0xAC,0xEC,0x9A,0xA9,0xEC,0x9E,0x90,':'}, //4-> 사용자 :
+		{""}, //5
+		{0xEB,0x82,0x98,0xEB,0xAC,0xB4,0xEC,0x9C,0x84,0xED,0x82,0xA4,':'}, //6-> 나무위키 :
+		{""}};
+	index2 += sprintf(output+index2,"%c",name_space[Nspace]);
+	
 	while(ttl[index] == 0)index++;
 	while(index<=title.len) parsetitle(ttl,index,index2)
 	output[index2++] ='\n';

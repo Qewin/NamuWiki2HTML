@@ -86,7 +86,7 @@ int mworker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
 }
 */
 int worker(pstring doc, FILE *outfile, unsigned char *Cdocv[]){
-	printf("Converting[SingleThread]\r");
+	printf("Converting\r");
 	
 	int i,index = 0,ttlend,txtend;
 	unsigned char *document;
