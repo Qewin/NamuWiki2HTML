@@ -339,7 +339,13 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 					if(txt[index] == '#'){
 						if(strncmp(&txt[index],"#!html",6) == 0){
 							index +=6;
-							while(strncmp(&txt[index],"}}}",3) != 0 && index<text.len)parsetitle(txt,index,index2)
+							while(strncmp(&txt[index],"}}}",3) != 0 && index<text.len){
+								if(strncmp(&txt[index],"<iframe",7) == 0){
+									while(strncmp(&txt[index],"}}}",3) != 0 && index<text.len)index++;
+									break;
+								}
+								else parsetitle(txt,index,index2)
+							}
 							index += 3;
 						}
 						else{
@@ -384,7 +390,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 			case '&':index2+=sprintf(output+index2,"&quot;"); index++; break;
 			case '|':{
 				if(txt[index+1] == '|'){
-					int cols=0, next, start;
+					int cols=0, rows=0, next, start;
 					int count = 0;
 					for(start=index;txt[start]=='|'&&txt[start+1]=='|';start+=2)cols++;
 					if(0 < (next = nexttable(text,start)) ){
@@ -429,8 +435,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 								index2 += sprintf(output+index2,"<tr>");
 								line = true;
 							}
-							if(cols>1) index2 += sprintf(output+index2,"<td colspan=\"%d\"",cols);
-							else index2 += sprintf(output+index2,"<td");
+							index2 += sprintf(output+index2,"<td");
 							
 							if(txt[start] == '<'){
 								index2 += sprintf(output+index2," style=\"");
@@ -444,7 +449,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 									{":","text-align: center"},
 									{")","text-align: right"},
 									{"^|","vertical-align: top"},
-									{"|","vertical-align: middle"},
+									//{"|","vertical-align: middle"},
 									{"v|","vertical-align: bottom"},
 									{"\0","\0"}};
 									
@@ -456,7 +461,22 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 											goto foundb;
 										}
 									}
-									while(txt[start] != '>')start++;
+									if(txt[start] == '-'){
+										start++;
+										for(j=start;txt[j] != '>';j++);
+										txt[j] = '\0';
+										cols += atoi(&txt[start]);
+										start=j;
+									}
+									else if(txt[start] == '|'){
+										start++;
+										for(j=start;txt[j] != '>';j++);
+										txt[j] = '\0';
+										rows = atoi(&txt[start]);
+										start=j;
+									}
+									else while(txt[start] != '>')start++;
+									
 									start++;
 									if(txt[start] == ' ')start++;
 									continue;
@@ -467,7 +487,8 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 									start++;
 									if(txt[start] == ' ')start++;
 								}while(txt[start] == '<');
-								index2 += sprintf(output+index2,"\">");
+								if(cols + rows > 1)index2 += sprintf(output+index2,"\" colspan=\"%d\" rowspan=\"%d\">",cols,rows);
+								else index2 += sprintf(output+index2,"\">");
 							}
 							else output[index2++] = '>';
 							
@@ -477,6 +498,7 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 							checknext:;
 							index = next;
 							cols=0;
+							rows=0;
 							for(start=index;txt[start]=='|'&&txt[start+1]=='|';start+=2)cols++;
 							next = nexttable(text,start);
 							if(next == 0){
@@ -514,6 +536,13 @@ int parsetext(string text, unsigned char* output, int index2v,short *ParagraphIn
 				else output[index2++] = txt[index++];
 				break;
 			}
+			/*case 'h':{
+				if(strncmp(&txt[index],"http://",7) == 0 || strncmp(&txt[index],"https://",8) == 0){
+					while(txt[index] != ' ' && (txt[index] != '\\' || txt[index] != 'n'))index++;
+				}
+				else {Plain}
+				break;
+			}*/
 			default: Plain
 		}
 	}
@@ -529,16 +558,17 @@ int parse(int Nspace, string title, string text, string* DocIndex, unsigned char
 	index2 = 0; //output index
 	index =0; //input index
 	int i;
-	static unsigned char name_space[][] = {
-		{""}, //0
-		{0xED,0x8B,0x80,':'}, //1 -> 틀: 
-		{0xEB,0xB6,0x84,0xEB,0xA5,0x98,':'}, //2 -> 분류: 
-		{0xEC,0x9D,0xB4,0xEB,0xAF,0xB8,0xEC,0xA7,0x80,':'}, //3-> 이미지 :
-		{0xEC,0x82,0xAC,0xEC,0x9A,0xA9,0xEC,0x9E,0x90,':'}, //4-> 사용자 :
-		{""}, //5
-		{0xEB,0x82,0x98,0xEB,0xAC,0xB4,0xEC,0x9C,0x84,0xED,0x82,0xA4,':'}, //6-> 나무위키 :
-		{""}};
-	index2 += sprintf(output+index2,"%c",name_space[Nspace]);
+	static unsigned char name_space[][20] = {
+		{'\0'}, //0
+		{0xED,0x8B,0x80,':','\0'}, //1 -> 틀: 
+		{0xEB,0xB6,0x84,0xEB,0xA5,0x98,':','\0'}, //2 -> 분류: 
+		{0xEC,0x9D,0xB4,0xEB,0xAF,0xB8,0xEC,0xA7,0x80,':','\0'}, //3-> 이미지 :
+		{0xEC,0x82,0xAC,0xEC,0x9A,0xA9,0xEC,0x9E,0x90,':','\0'}, //4-> 사용자 :
+		{'\0'}, //5
+		{0xEB,0x82,0x98,0xEB,0xAC,0xB4,0xEC,0x9C,0x84,0xED,0x82,0xA4,':','\0'}, //6-> 나무위키 :
+		{'\0'}};
+	for(i=0;name_space[Nspace][i] != '\0';i++)output[index2++] = name_space[Nspace][i];
+	//index2 += sprintf(output+index2,"%c",&name_space[Nspace][0]);
 	
 	while(ttl[index] == 0)index++;
 	while(index<=title.len) parsetitle(ttl,index,index2)
